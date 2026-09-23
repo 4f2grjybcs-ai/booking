@@ -176,6 +176,10 @@ function fvr_create_booking(array $in)
         'email' => $email, 'phone' => $phone, 'weights' => $weights, 'message' => $message,
         'status' => 'pending', 'admin_notes' => '', 'created_at' => fvr_now(), 'updated_at' => fvr_now(),
     ]);
+    $bookingId = (int) $wpdb->insert_id;
+    if ($ok) {
+        fvr_update_booking_pilots($bookingId, null, true);
+    }
     fvr_lock(false);
     if (!$ok) {
         return new WP_Error('db', 'Erreur serveur, veuillez réessayer.', ['status' => 500]);
@@ -220,6 +224,7 @@ function fvr_save_booking(array $p, int $id = 0)
     ];
     if ($id) {
         $wpdb->update(fvr_table('bookings'), $data, ['id' => $id]);
+        fvr_update_booking_pilots($id, $p['pilots'] ?? null, false);
         return $id;
     }
     $data['reference'] = fvr_generate_reference();
@@ -227,7 +232,23 @@ function fvr_save_booking(array $p, int $id = 0)
     if (!$wpdb->insert(fvr_table('bookings'), $data)) {
         return new WP_Error('db', "Erreur lors de l'enregistrement.", ['status' => 500]);
     }
-    return (int) $wpdb->insert_id;
+    $id = (int) $wpdb->insert_id;
+    fvr_update_booking_pilots($id, $p['pilots'] ?? null, true);
+    return $id;
+}
+
+// Horaires proposés au choix : de 8h à 18h par quarts d'heure (+ l'heure actuelle si elle sort de cette plage)
+function fvr_time_choices(string $current = ''): array
+{
+    $list = [];
+    for ($m = 8 * 60; $m <= 18 * 60; $m += 15) {
+        $list[] = sprintf('%02d:%02d', intdiv($m, 60), $m % 60);
+    }
+    if ($current !== '' && !in_array($current, $list, true)) {
+        $list[] = $current;
+        sort($list);
+    }
+    return $list;
 }
 
 function fvr_send_emails($ref, $flightName, $date, $time, $pax, $total, $name, $email, $phone, $weights, $message): void

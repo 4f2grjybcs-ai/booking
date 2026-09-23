@@ -31,6 +31,8 @@
     trash: '<path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/>',
     plus: '<path d="M12 5v14M5 12h14"/>',
     chevron: '<path d="M7 10l5 5 5-5"/>',
+    more: '<circle cx="12" cy="5.5" r="1.3"/><circle cx="12" cy="12" r="1.3"/><circle cx="12" cy="18.5" r="1.3"/>',
+    pilot: '<circle cx="12" cy="7.5" r="3.5"/><path d="M5 20c.8-4 3.6-6 7-6s6.2 2 7 6"/>',
     cal: '<rect x="3.5" y="5" width="17" height="15" rx="2"/><path d="M3.5 10h17M8 3v4M16 3v4"/>',
     sms: '<path d="M4 5h16v11H9l-5 4z"/><path d="M8 10.5h.01M12 10.5h.01M16 10.5h.01"/>',
     wa: '<path d="M4 20l1.3-4A8 8 0 1 1 8 18.7z"/><path d="M9 9.5c.3 2.3 2.2 4.2 4.5 4.5l1-1.2 2 .8-.3 1.6c-3.6.4-7.4-3.4-7-7L10.8 8l.8 2z"/>'
@@ -48,7 +50,8 @@
 
   var mq = window.matchMedia('(max-width: 760px)');
   var state = {
-    view: store('view') || (mq.matches ? 'list' : 'week'),
+    view: store('view') || (mq.matches ? (C.canEdit ? 'list' : 'day') : 'week'),
+    mine: !!C.me && store('mine') !== '0',
     anchor: C.today,
     showCancelled: store('cancelled') === '1',
     sidebar: !mq.matches && store('sidebar') !== '0',
@@ -87,7 +90,10 @@
   function title() {
     var r = range(), a = toDate(r[0]), b = toDate(r[1]), m = toDate(state.anchor);
     if (state.view === 'month' || state.view === 'list') return MONTHS[m.getMonth()] + ' ' + m.getFullYear();
-    if (state.view === 'day') return m.getDate() + ' ' + MONTHS[m.getMonth()] + ' ' + m.getFullYear();
+    if (state.view === 'day') {
+      if (mq.matches) return DAYS[m.getDay()] + ' ' + m.getDate() + ' ' + (MONTHS[m.getMonth()].length > 5 ? MONTHS[m.getMonth()].slice(0, 4) + '.' : MONTHS[m.getMonth()]);
+      return DAYS_LONG[m.getDay()] + ' ' + m.getDate() + ' ' + MONTHS[m.getMonth()] + ' ' + m.getFullYear();
+    }
     if (a.getMonth() === b.getMonth()) return MONTHS[a.getMonth()] + ' ' + a.getFullYear();
     return MONTHS[a.getMonth()].slice(0, 4) + '. – ' + MONTHS[b.getMonth()].slice(0, 4) + '. ' + b.getFullYear();
   }
@@ -156,9 +162,28 @@
     });
   }
 
+  function isMine(b) { return !!C.me && (b.pilots || []).indexOf(C.me.id) !== -1; }
   function visible() {
-    return state.data.bookings.filter(function (b) { return state.showCancelled || b.status !== 'cancelled'; });
+    return state.data.bookings.filter(function (b) {
+      return (state.showCancelled || b.status !== 'cancelled') && (!state.mine || isMine(b));
+    });
   }
+  function pilotsById() {
+    var m = {};
+    (state.data.pilots || []).forEach(function (p) { m[p.id] = p; });
+    return m;
+  }
+  // « Tristan, Maël, à définir » ; « Toi » pour le pilote qui consulte son lien
+  function pilotLabel(b) {
+    var byId = pilotsById();
+    var seats = b.pilots && b.pilots.length ? b.pilots : [];
+    if (!seats.length || !(state.data.pilots || []).length) return '';
+    return seats.map(function (id) {
+      if (!id || !byId[id]) return '<em class="g-tbd">à définir</em>';
+      return C.me && id === C.me.id ? '<strong>Toi</strong>' : esc(byId[id].name);
+    }).join(', ');
+  }
+  function missingPilots(b) { return (b.pilots || []).some(function (id) { return !id; }) && (state.data.pilots || []).length > 0; }
   function byDate() {
     var m = {};
     visible().forEach(function (b) { (m[b.date] = m[b.date] || []).push(b); });
@@ -179,9 +204,8 @@
   function hourRange() {
     var ms = activeSlots().map(function (s) { return mins(s.time); });
     visible().forEach(function (b) { ms.push(mins(b.time)); });
-    if (!ms.length) return [7, 19];
-    var lo = Math.min.apply(null, ms), hi = Math.max.apply(null, ms) + DURATION;
-    return [Math.max(0, Math.floor(lo / 60) - 1), Math.min(24, Math.ceil(hi / 60) + 1)];
+    var lo = Math.min.apply(null, ms.concat([8 * 60])), hi = Math.max.apply(null, ms.map(function (m) { return m + DURATION; }).concat([18 * 60]));
+    return [Math.max(0, Math.floor(lo / 60)), Math.min(24, Math.ceil(hi / 60))];
   }
 
   // ---------- Rendu général ----------
@@ -193,7 +217,7 @@
     root.className = 'fvr-cal g-app' + (state.sidebar ? ' with-sidebar' : '') + (C.canEdit ? ' can-edit' : ' read-only');
     root.innerHTML = topbar() +
       '<div class="g-main">' + sidebar() +
-      '<div class="g-content">' + content() + '</div></div>' +
+      '<div class="g-content">' + filterBar() + content() + '</div></div>' +
       (C.canEdit ? '<button type="button" class="g-fab" data-new aria-label="Nouvelle réservation">' + icon('plus') + '</button>' : '');
 
     var nb = root.querySelector('.g-body');
@@ -209,7 +233,32 @@
     }
   }
 
+  function compactDay() { return mq.matches && state.view === 'day'; }
+
+  function viewMenu(iconOnly) {
+    return '<div class="g-menu-wrap"><button type="button" class="' + (iconOnly ? 'g-icon-btn' : 'g-view-btn') + '" data-menu aria-label="Affichage">' +
+      (iconOnly ? icon('more') : VIEWS[state.view] + icon('chevron')) + '</button>' +
+      '<div class="g-menu" hidden>' +
+      Object.keys(VIEWS).map(function (v) {
+        return '<button type="button" data-view="' + v + '"' + (v === state.view ? ' class="on"' : '') + '>' + VIEWS[v] + '<kbd>' + { day: 'J', week: 'S', month: 'M', list: 'P' }[v] + '</kbd></button>';
+      }).join('') +
+      '<hr><label><input type="checkbox" data-cancelled' + (state.showCancelled ? ' checked' : '') + '> Afficher les annulées</label>' +
+      (C.icsUrl ? '<a href="' + esc(C.icsUrl.replace(/^https?:/, 'webcal:')) + '">' + icon('cal') + ' Ajouter à mon agenda</a>' : '') +
+      '</div></div>';
+  }
+
   function topbar() {
+    if (compactDay()) {
+      return '<header class="g-top g-top-day">' +
+        '<button type="button" class="g-icon-btn" data-nav="-1" aria-label="Jour précédent">' + icon('prev') + '</button>' +
+        '<label class="g-datepick' + (state.anchor === C.today ? ' is-today' : '') + '"><span>' + esc(title()) + '</span>' +
+        '<input type="date" data-datepick value="' + esc(state.anchor) + '" aria-label="Choisir une date"></label>' +
+        '<button type="button" class="g-icon-btn" data-nav="1" aria-label="Jour suivant">' + icon('next') + '</button>' +
+        '<span class="g-spacer"></span>' +
+        (state.anchor !== C.today ? '<button type="button" class="g-today" data-nav="0" aria-label="Aujourd\'hui"><span class="g-today-short">' + toDate(C.today).getDate() + '</span></button>' : '') +
+        (C.canEdit ? '<button type="button" class="g-icon-btn" data-search aria-label="Rechercher">' + icon('search') + '</button>' : '') +
+        viewMenu(true) + '</header>';
+    }
     return '<header class="g-top">' +
       '<button type="button" class="g-icon-btn" data-toggle-sidebar aria-label="Menu">' + icon('menu') + '</button>' +
       '<div class="g-brand">' + icon('cal', 'g-brand-ic') + '<span>' + esc(C.site || 'Planning') + '</span></div>' +
@@ -219,15 +268,8 @@
       '<h1 class="g-title">' + esc(title()) + '</h1>' +
       '<span class="g-spacer"></span>' +
       (C.canEdit ? '' : '<span class="g-ro">Lecture seule</span>') +
-      '<button type="button" class="g-icon-btn" data-search aria-label="Rechercher">' + icon('search') + '</button>' +
-      '<div class="g-menu-wrap"><button type="button" class="g-view-btn" data-menu>' + VIEWS[state.view] + icon('chevron') + '</button>' +
-      '<div class="g-menu" hidden>' +
-      Object.keys(VIEWS).map(function (v) {
-        return '<button type="button" data-view="' + v + '"' + (v === state.view ? ' class="on"' : '') + '>' + VIEWS[v] + '<kbd>' + { day: 'J', week: 'S', month: 'M', list: 'P' }[v] + '</kbd></button>';
-      }).join('') +
-      '<hr><label><input type="checkbox" data-cancelled' + (state.showCancelled ? ' checked' : '') + '> Afficher les annulées</label>' +
-      (C.icsUrl ? '<a href="' + esc(C.icsUrl.replace(/^https?:/, 'webcal:')) + '">' + icon('cal') + ' Ajouter à mon agenda</a>' : '') +
-      '</div></div></header>';
+      (C.canEdit || !mq.matches ? '<button type="button" class="g-icon-btn" data-search aria-label="Rechercher">' + icon('search') + '</button>' : '') +
+      viewMenu(false) + '</header>';
   }
 
   function sidebar() {
@@ -256,6 +298,13 @@
       h += '<button type="button" class="g-mini-day' + cls + '" data-goto="' + d + '">' + dt.getDate() + '</button>';
     }
     return h + '</div></div>';
+  }
+
+  function filterBar() {
+    if (!C.me) return '';
+    return '<div class="g-filter" role="tablist">' +
+      '<button type="button" data-mine="1"' + (state.mine ? ' class="on"' : '') + '>' + icon('pilot') + 'Mes vols</button>' +
+      '<button type="button" data-mine="0"' + (!state.mine ? ' class="on"' : '') + '>Tous les vols</button></div>';
   }
 
   function content() {
@@ -302,7 +351,7 @@
     });
     h += '</div><div class="g-body"><div class="g-body-in" style="height:' + ((hr[1] - hr[0]) * H) + 'px">';
     h += '<div class="g-gutter">';
-    for (var i = hr[0] + 1; i < hr[1]; i++) h += '<span style="top:' + ((i - hr[0]) * H) + 'px">' + pad(i) + ':00</span>';
+    for (var i = hr[0]; i < hr[1]; i++) h += '<span' + (i === hr[0] ? ' class="first"' : '') + ' style="top:' + ((i - hr[0]) * H) + 'px">' + pad(i) + ':00</span>';
     h += '</div><div class="g-cols">';
     days.forEach(function (d) {
       var list = per[d] || [];
@@ -316,11 +365,12 @@
       layout(list).forEach(function (ev) {
         var b = ev.b, top = (ev.s / 60 - hr[0]) * H, height = Math.max(22, DURATION / 60 * H - 3);
         var w = 100 / ev.n;
-        h += '<div class="g-ev st-' + esc(b.status) + (height < 40 ? ' short' : '') + '" data-id="' + b.id + '"' +
+        h += '<div class="g-ev st-' + esc(b.status) + (height < 40 ? ' short' : '') + (C.me && !isMine(b) ? ' other' : '') + (C.me && isMine(b) ? ' mine' : '') + '" data-id="' + b.id + '"' +
           (C.canEdit ? ' draggable="true"' : '') + ' tabindex="0" role="button"' +
           ' style="top:' + top + 'px;height:' + height + 'px;left:calc(' + (ev.col * w) + '% + 1px);width:calc(' + w + '% - 4px)">' +
           '<b>' + esc(b.name) + '</b>' +
           '<span>' + esc(b.time) + ' · ' + b.passengers + ' pax' + (b.weights ? ' · ' + esc(b.weights) + ' kg' : '') + '</span>' +
+          (pilotLabel(b) ? '<span class="g-ev-pilots">' + icon('pilot') + pilotLabel(b) + '</span>' : '') +
           '<span class="g-ev-flight">' + esc(b.flight_name) + '</span></div>';
       });
       if (d === todayStr()) {
@@ -372,7 +422,8 @@
         h += '<div class="g-litem st-' + esc(b.status) + '" data-id="' + b.id + '" tabindex="0" role="button">' +
           '<i class="g-dot st-' + esc(b.status) + '"></i><span class="g-ltime">' + esc(b.time) + '</span>' +
           '<span class="g-lmain"><b>' + esc(b.name) + '</b><small>' + b.passengers + ' pax · ' + esc(b.flight_name) +
-          (b.weights ? ' · ' + esc(b.weights) + ' kg' : '') + (b.status !== 'confirmed' ? ' · ' + esc(C.statuses[b.status] || b.status) : '') + '</small></span>' +
+          (b.weights ? ' · ' + esc(b.weights) + ' kg' : '') + (b.status !== 'confirmed' ? ' · ' + esc(C.statuses[b.status] || b.status) : '') + '</small>' +
+          (pilotLabel(b) ? '<small class="g-lpilots">' + icon('pilot') + pilotLabel(b) + '</small>' : '') + '</span>' +
           (b.phone ? '<a class="g-lcall" href="tel:' + esc(intl(b.phone)) + '" aria-label="Appeler ' + esc(b.name) + '">' + icon('phone') + '</a>' : '') +
           '</div>';
       });
@@ -428,10 +479,19 @@
       row('tag', esc(C.statuses[b.status] || b.status) + ' · réf. ' + esc(b.reference)) +
       row('people', b.passengers + ' passager' + (b.passengers > 1 ? 's' : '') + (b.weights ? ' · ' + esc(b.weights) + ' kg' : '')) +
       row('plane', esc(b.flight_name)) +
+      row('pilot', pilotLabel(b)) +
       row('phone', b.phone ? '<a href="tel:' + esc(intl(b.phone)) + '">' + esc(b.phone) + '</a>' : '') +
       row('chat', esc(b.message)) +
       row('note', esc(b.admin_notes)) +
       contactButtons(b.phone, '') + '</div>', 'g-sheet-details');
+  }
+
+  // Horaires proposés : de 8h à 18h, tous les quarts d'heure (+ l'heure actuelle si elle sort de cette plage)
+  function timeOptions(current) {
+    var list = [];
+    for (var m = 8 * 60; m <= 18 * 60; m += 15) list.push(hhmm(m));
+    if (current && list.indexOf(current) === -1) { list.push(current); list.sort(); }
+    return list.map(function (t) { return '<option' + (t === current ? ' selected' : '') + '>' + t + '</option>'; }).join('');
   }
 
   function editBooking(b) {
@@ -463,7 +523,7 @@
 
       '<div class="g-frow">' + icon('clock') + '<div class="g-fcol">' +
       '<div class="g-inline"><input type="date" name="date" value="' + esc(b.date) + '" required>' +
-      '<input type="time" name="time" value="' + esc(b.time) + '" step="300" required></div>' +
+      '<select name="time" class="g-timesel" required>' + timeOptions(b.time) + '</select></div>' +
       '<div class="g-slots" aria-label="Horaires"></div></div></div>' +
 
       '<div class="g-frow">' + icon('people') + '<div class="g-fcol g-inline">' +
@@ -471,6 +531,7 @@
       '<input type="number" name="passengers" min="1" max="30" value="' + (b.passengers || 1) + '" inputmode="numeric">' +
       '<button type="button" data-step="1" aria-label="Plus">+</button></div><span class="g-muted">passager(s)</span></div></div>' +
 
+      ((state.data.pilots || []).length ? '<div class="g-frow">' + icon('pilot') + '<div class="g-fcol g-seats"></div></div>' : '') +
       '<div class="g-frow">' + icon('plane') + '<div class="g-fcol"><select name="flight_id">' + flightOptions + '</select></div></div>' +
       '<div class="g-frow">' + icon('money') + '<div class="g-fcol g-inline"><input type="number" name="price" step="0.01" inputmode="decimal" value="' + (b.price || 0) + '"><span class="g-muted">CHF total</span></div></div>' +
 
@@ -479,7 +540,7 @@
       '<div class="g-contact-slot"></div>' +
       '<div class="g-frow">' + icon('scale') + '<div class="g-fcol"><input type="text" name="weights" placeholder="Poids des passagers (kg)" value="' + esc(b.weights) + '"></div></div>' +
       '<div class="g-frow">' + icon('chat') + '<div class="g-fcol"><textarea name="message" rows="2" placeholder="Message du client">' + esc(b.message) + '</textarea></div></div>' +
-      '<div class="g-frow">' + icon('note') + '<div class="g-fcol"><textarea name="admin_notes" rows="2" placeholder="Notes internes (pilote, paiement…) – visibles par les pilotes">' + esc(b.admin_notes) + '</textarea></div></div>' +
+      '<div class="g-frow">' + icon('note') + '<div class="g-fcol"><textarea name="admin_notes" rows="2" placeholder="Notes internes (paiement, matériel…) – visibles par les pilotes">' + esc(b.admin_notes) + '</textarea></div></div>' +
       '<p class="g-error" hidden></p>' +
       (isNew ? '' : '<button type="button" class="g-delete" data-delete>' + icon('trash') + 'Supprimer la réservation</button>') +
       '</div></form>', 'g-sheet-edit');
@@ -497,6 +558,59 @@
     function refreshContact() { contactEl.innerHTML = contactButtons(form.phone.value, form.email.value); }
 
     // Horaires du jour choisi avec places libres (en excluant cette réservation)
+    // ----- Pilotes : un sélecteur par passager, proposition automatique selon l'ordre par défaut
+    var seatsEl = form.querySelector('.g-seats');
+    var seats = (b.pilots || []).slice();
+    var manual = [];                       // places choisies à la main (non recalculées)
+    var initialSeats = isNew ? 0 : seats.length;
+    var dayData = null;
+    function busyPilots() {
+      var t = form.time.value, busy = {};
+      if (!dayData) return busy;
+      dayData.bookings.forEach(function (x) {
+        if (x.time === t && x.status !== 'cancelled' && x.id !== b.id) (x.pilots || []).forEach(function (id) { if (id) busy[id] = x.name; });
+      });
+      return busy;
+    }
+    function suggestSeats() {
+      var pax = Math.max(1, parseInt(form.passengers.value, 10) || 1), busy = busyPilots();
+      seats.length = Math.min(seats.length, pax);
+      var defaults = (state.data.pilots || []).filter(function (p) { return p.active && p.rank > 0; })
+        .sort(function (a, c) { return a.rank - c.rank; });
+      for (var i = 0; i < pax; i++) {
+        var auto = !manual[i] && (isNew || i >= initialSeats);
+        if (!auto) { if (seats[i] === undefined) seats[i] = 0; continue; }
+        seats[i] = 0;
+      }
+      for (i = 0; i < pax; i++) {
+        if (manual[i] || !(isNew || i >= initialSeats)) continue;
+        for (var k = 0; k < defaults.length; k++) {
+          var id = defaults[k].id;
+          if (!busy[id] && seats.indexOf(id) === -1) { seats[i] = id; break; }
+        }
+      }
+      renderSeats();
+    }
+    function renderSeats() {
+      if (!seatsEl) return;
+      var busy = busyPilots(), pilots = state.data.pilots || [];
+      seatsEl.innerHTML = seats.map(function (sel, i) {
+        return '<label class="g-seat"><span>' + (seats.length > 1 ? 'Pilote ' + (i + 1) : 'Pilote') + '</span><select data-seat="' + i + '"' + (sel ? '' : ' class="tbd"') + '>' +
+          '<option value="0">— À définir —</option>' +
+          pilots.filter(function (p) { return p.active || p.id === sel; }).map(function (p) {
+            var other = seats.indexOf(p.id) !== -1 && p.id !== sel;
+            return '<option value="' + p.id + '"' + (p.id === sel ? ' selected' : '') + (other ? ' disabled' : '') + '>' + esc(p.name) +
+              (p.rank ? ' (n°' + p.rank + ')' : '') + (busy[p.id] ? ' · en vol avec ' + esc(busy[p.id]) : '') + '</option>';
+          }).join('') + '</select></label>';
+      }).join('');
+    }
+    if (seatsEl) seatsEl.addEventListener('change', function (e) {
+      var i = +e.target.getAttribute('data-seat');
+      seats[i] = +e.target.value;
+      manual[i] = true;
+      renderSeats();
+    });
+
     var slotReq = 0;
     function refreshSlots() {
       var date = form.date.value, req = ++slotReq;
@@ -516,10 +630,13 @@
             '<b>' + s.time + '</b><small>' + (free <= 0 ? 'complet' : free + ' libre' + (free > 1 ? 's' : '')) + '</small></button>';
         }).join('');
         slotsEl.innerHTML = closed + chips;
+        dayData = data;
+        suggestSeats();
       }).catch(function () { slotsEl.innerHTML = ''; });
     }
     function highlightSlot() {
       slotsEl.querySelectorAll('.g-slotchip').forEach(function (c) { c.classList.toggle('on', c.getAttribute('data-time') === form.time.value); });
+      suggestSeats();
     }
 
     form.addEventListener('input', markDirty);
@@ -527,7 +644,7 @@
     form.flight_id.addEventListener('change', recalc);
     form.passengers.addEventListener('input', function () { recalc(); refreshSlots(); });
     form.date.addEventListener('change', refreshSlots);
-    form.time.addEventListener('input', highlightSlot);
+    form.time.addEventListener('change', highlightSlot);
     form.phone.addEventListener('input', refreshContact);
     form.email.addEventListener('input', refreshContact);
     form.addEventListener('click', function (e) {
@@ -545,6 +662,7 @@
       if (!form.name.value.trim()) { errEl.textContent = 'Indiquez le nom du client.'; errEl.hidden = false; form.name.focus(); return; }
       var payload = { id: b.id || 0, flight_name: b.flight_name || '' };
       new FormData(form).forEach(function (v, k) { payload[k] = v; });
+      if (seatsEl) payload.pilots = seats.slice(0, Math.max(1, parseInt(form.passengers.value, 10) || 1));
       var btn = form.querySelector('.g-save');
       btn.disabled = true;
       save(payload).then(function () {
@@ -637,6 +755,7 @@
     if ((el = t.closest('[data-menu]'))) { var m = el.nextElementSibling; m.hidden = !m.hidden; return; }
     if ((el = t.closest('[data-view]'))) { closeMenus(); return setView(el.getAttribute('data-view')); }
     if ((el = t.closest('[data-nav]'))) return shift(+el.getAttribute('data-nav'));
+    if ((el = t.closest('[data-mine]'))) { state.mine = el.getAttribute('data-mine') === '1'; store('mine', state.mine ? '1' : '0'); return render(); }
     if ((el = t.closest('[data-mini]'))) {
       var d = toDate(state.anchor);
       state.anchor = toStr(new Date(d.getFullYear(), d.getMonth() + (+el.getAttribute('data-mini')), 1, 12));
@@ -671,6 +790,7 @@
   });
 
   root.addEventListener('change', function (e) {
+    if (e.target.hasAttribute('data-datepick') && e.target.value) { state.anchor = e.target.value; return load(); }
     if (e.target.hasAttribute('data-cancelled')) {
       state.showCancelled = e.target.checked;
       store('cancelled', state.showCancelled ? '1' : '0');
@@ -752,6 +872,20 @@
       b.date = date; b.time = time; render();
     });
   }
+
+  // Balayage horizontal (téléphone) : jour / semaine / mois précédent ou suivant
+  var touch = null;
+  root.addEventListener('touchstart', function (e) {
+    if (e.touches.length !== 1 || !e.target.closest('.g-content')) { touch = null; return; }
+    touch = { x: e.touches[0].clientX, y: e.touches[0].clientY, t: Date.now() };
+  }, { passive: true });
+  root.addEventListener('touchend', function (e) {
+    if (!touch || state.sheet) return;
+    var dx = e.changedTouches[0].clientX - touch.x, dy = e.changedTouches[0].clientY - touch.y;
+    var fast = Date.now() - touch.t < 600;
+    touch = null;
+    if (fast && Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy) * 1.5 && state.view !== 'list') shift(dx < 0 ? 1 : -1);
+  }, { passive: true });
 
   // Ligne « maintenant » et nouvelles réservations : actualisation régulière
   setInterval(function () {

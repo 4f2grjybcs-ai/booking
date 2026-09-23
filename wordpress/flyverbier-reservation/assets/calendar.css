@@ -116,6 +116,7 @@ body.fvr-cal-page .g-app { height: 100vh; height: 100dvh; }
 .g-body-in { display: flex; position: relative; }
 .g-body .g-gutter { width: var(--gutter); flex: none; position: relative; }
 .g-body .g-gutter span { position: absolute; right: 8px; transform: translateY(-50%); font-size: 10px; color: var(--g-muted); }
+.g-body .g-gutter span.first { transform: none; top: 2px !important; }
 .g-cols { flex: 1; display: flex; position: relative;
   background-image: repeating-linear-gradient(to bottom, transparent 0, transparent calc(var(--hour-h) - 1px), var(--g-line) calc(var(--hour-h) - 1px), var(--g-line) var(--hour-h)); }
 .g-col { flex: 1; min-width: 0; position: relative; border-left: 1px solid var(--g-line); }
@@ -229,7 +230,7 @@ body.fvr-cal-page .g-app { height: 100vh; height: 100dvh; }
   width: 100%; font: inherit; font-size: 15px; color: var(--g-text); background: var(--g-soft); border: 0; border-bottom: 1px solid transparent; border-radius: 6px 6px 0 0; padding: 10px 12px; min-height: 42px; outline: none; }
 .g-form input:focus, .g-form select:focus, .g-form textarea:focus { background: #e8eaed; border-bottom: 2px solid var(--g-blue); }
 .g-inline input[type=date] { flex: 1 1 150px; width: auto; }
-.g-inline input[type=time] { flex: 0 1 110px; width: auto; }
+.g-inline input[type=time], .g-form .g-inline .g-timesel { flex: 0 1 110px; width: auto; }
 .g-inline input[name=price] { flex: 0 1 140px; width: auto; }
 .g-slots { display: flex; gap: 6px; overflow-x: auto; padding: 8px 0 2px; flex-wrap: wrap; }
 .g-slotchip { display: flex; flex-direction: column; align-items: center; border: 1px solid var(--g-line); background: #fff; border-radius: 8px; padding: 6px 10px; min-width: 68px; }
@@ -294,7 +295,11 @@ body.fvr-cal-page .g-app { height: 100vh; height: 100dvh; }
   .g-grid { --gutter: 40px; }
   .g-dnum { width: 36px; height: 36px; font-size: 20px; }
   .g-ev { font-size: 11px; padding: 2px 4px; }
-  .g-ev span:not(:first-of-type) { display: none; }
+  .g-grid:not(.g-oneday) .g-ev span:not(:first-of-type) { display: none; }
+  /* Vue jour épurée : la date est dans la barre du haut */
+  .g-oneday .g-grid-head { display: none; }
+  .g-top-day { gap: 2px; padding: 6px 4px; }
+  .g-top-day .g-today { order: 0; }
   .g-month-grid { grid-template-rows: repeat(var(--weeks, 5), minmax(72px, 1fr)); }
   .g-mev { font-size: 10px; padding: 1px 2px; }
   .g-mev .t, .g-mev .p { display: none; }
@@ -307,3 +312,29 @@ body.fvr-cal-page .g-app { height: 100vh; height: 100dvh; }
   .g-frow { gap: 12px; }
   .g-contact { padding-left: 32px; }
 }
+
+/* ---------- Pilotes ---------- */
+.g-ev-pilots { display: flex; align-items: center; gap: 3px; }
+.g-ev-pilots .g-ic, .g-lpilots .g-ic { width: 13px; height: 13px; stroke-width: 2; }
+.g-ev .g-tbd { font-style: normal; background: rgba(255,255,255,.9); color: var(--g-red); border-radius: 3px; padding: 0 3px; font-size: 11px; }
+.g-ev.st-pending .g-tbd, .g-ev.st-cancelled .g-tbd { background: #fdecea; }
+.g-ev.other { opacity: .38; }
+.g-ev.mine { box-shadow: 0 0 0 2px #fff, 0 0 0 4px var(--g-blue); z-index: 3; }
+.g-lpilots { display: flex; align-items: center; gap: 4px; }
+.g-lpilots .g-tbd { font-style: normal; color: var(--g-red); font-weight: 500; }
+.g-row .g-tbd { font-style: normal; color: var(--g-red); font-weight: 500; }
+.g-filter { display: flex; gap: 8px; padding: 8px 12px; border-bottom: 1px solid var(--g-line); flex: none; }
+.g-filter button { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--g-line); background: #fff; border-radius: 8px; padding: 6px 14px; font-weight: 500; font-size: 13px; }
+.g-filter button .g-ic { width: 16px; height: 16px; }
+.g-filter button.on { background: var(--g-blue-soft); border-color: var(--g-blue-soft); color: #041e49; }
+.g-seats { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 8px; }
+.g-seat span { display: block; font-size: 12px; color: var(--g-muted); margin: 0 0 2px 2px; }
+.g-form .g-seat select.tbd { color: var(--g-red); }
+
+/* Barre compacte « ‹ date › » */
+.g-datepick { position: relative; display: inline-flex; align-items: center; font-size: 19px; font-weight: 500; padding: 6px 8px; border-radius: 8px; cursor: pointer; white-space: nowrap; }
+.g-datepick:hover { background: var(--g-soft); }
+.g-datepick.is-today span { color: var(--g-blue); }
+.g-datepick input { position: absolute; inset: 0; opacity: 0; width: 100%; height: 100%; cursor: pointer; border: 0; padding: 0; }
+.g-datepick input::-webkit-calendar-picker-indicator { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; }
+.read-only .g-slot { display: none; }

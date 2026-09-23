@@ -10,6 +10,15 @@ Le dossier `wordpress/flyverbier-reservation/` est une extension WordPress.
 4. Créer une page « Réserver » contenant le shortcode `[reservation_parapente]`.
 5. Vérifier **Réglages → Général → Fuseau horaire** = Zurich.
 
+### Pilotes (v1.3)
+
+- **Réservations → Pilotes** : profils (nom, téléphone, e-mail, couleur), **ordre par défaut** (pilote n°1, n°2…),
+  lien personnel (planning + abonnement agenda de ses seuls vols), envoi du lien par WhatsApp.
+- Chaque passager reçoit un pilote : attribution automatique dans l'ordre par défaut en sautant les pilotes
+  déjà en vol à la même heure ; les places restantes sont « à définir » et se choisissent dans la réservation.
+- Agenda du pilote sur mobile : barre « ‹ date › », journée 8h–18h, balayage gauche/droite, filtre « Mes vols / Tous ».
+- Choix de l'heure : menu déroulant 8h00–18h00 par quarts d'heure.
+
 ### Agenda style Google Agenda (v1.2)
 
 - Vues Jour / Semaine / Mois / Planning (liste, vue par défaut sur téléphone), mini-calendrier,

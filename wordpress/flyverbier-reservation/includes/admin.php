@@ -14,6 +14,7 @@ add_action('admin_menu', function () {
     add_menu_page('Réservations', 'Réservations' . $bubble, fvr_cap(), 'fvr', 'fvr_page_bookings', 'dashicons-calendar-alt', 26);
     add_submenu_page('fvr', 'Réservations', 'Toutes les réservations', fvr_cap(), 'fvr', 'fvr_page_bookings');
     add_submenu_page('fvr', 'Nouvelle réservation', 'Ajouter', fvr_cap(), 'fvr-edit', 'fvr_page_edit');
+    add_submenu_page('fvr', 'Pilotes', 'Pilotes', fvr_cap(), 'fvr-pilots', 'fvr_page_pilots');
     add_submenu_page('fvr', 'Paramètres des réservations', 'Paramètres', fvr_cap(), 'fvr-settings', 'fvr_page_settings');
 });
 
@@ -87,7 +88,7 @@ add_action('admin_post_fvr', function () {
             fvr_back(admin_url('admin.php?page=fvr-edit&id=' . $saved), $id ? 'Réservation enregistrée.' : 'Réservation créée.');
 
         case 'delete_booking':
-            $wpdb->delete(fvr_table('bookings'), ['id' => (int) $p['id']]);
+            fvr_delete_booking((int) $p['id']);
             fvr_back($listUrl, 'Réservation supprimée.');
 
         case 'save_flight':
@@ -141,6 +142,35 @@ add_action('admin_post_fvr', function () {
         case 'unblock_date':
             $wpdb->delete(fvr_table('blocked'), ['date' => $p['date'] ?? '']);
             fvr_back($settingsUrl, 'Jour réouvert.');
+
+        case 'save_pilot':
+            $pilotsUrl = admin_url('admin.php?page=fvr-pilots');
+            $id = (int) ($p['id'] ?? 0);
+            $color = sanitize_hex_color($p['color'] ?? '') ?: '#0b57d0';
+            $data = [
+                'name' => sanitize_text_field($p['name'] ?? ''), 'phone' => sanitize_text_field($p['phone'] ?? ''),
+                'email' => sanitize_email($p['email'] ?? ''), 'color' => $color,
+                'default_rank' => max(0, (int) ($p['default_rank'] ?? 0)), 'active' => empty($p['active']) ? 0 : 1,
+            ];
+            if ($data['name'] === '') {
+                fvr_back($pilotsUrl, 'Le nom du pilote est requis.', true);
+            }
+            if ($id) {
+                $wpdb->update(fvr_table('pilots'), $data, ['id' => $id]);
+            } else {
+                $data['token'] = fvr_new_pilot_token();
+                $wpdb->insert(fvr_table('pilots'), $data);
+            }
+            fvr_back($pilotsUrl, 'Pilote enregistré.');
+
+        case 'delete_pilot':
+            $wpdb->delete(fvr_table('assign'), ['pilot_id' => (int) $p['id']]);
+            $wpdb->delete(fvr_table('pilots'), ['id' => (int) $p['id']]);
+            fvr_back(admin_url('admin.php?page=fvr-pilots'), 'Pilote supprimé. Ses vols sont repassés « à définir ».');
+
+        case 'regen_pilot_token':
+            $wpdb->update(fvr_table('pilots'), ['token' => fvr_new_pilot_token()], ['id' => (int) $p['id']]);
+            fvr_back(admin_url('admin.php?page=fvr-pilots'), 'Nouveau lien créé pour ce pilote : l\'ancien ne fonctionne plus.');
 
         case 'regen_token':
             fvr_regenerate_planning_token();
@@ -202,11 +232,15 @@ add_action('admin_post_fvr_export', function () {
     $out = fopen('php://output', 'w');
     fwrite($out, "\xEF\xBB\xBF");
     fputcsv($out, ['Référence', 'Date', 'Heure', 'Vol', 'Passagers', 'Prix CHF', 'Nom', 'E-mail', 'Téléphone',
-                   'Poids', 'Message', 'Statut', 'Notes internes', 'Créée le'], ';', '"', '\\');
-    foreach (fvr_query_bookings(fvr_filter_args()) as $b) {
+                   'Poids', 'Message', 'Statut', 'Pilotes', 'Notes internes', 'Créée le'], ';', '"', '\\');
+    $rows = fvr_query_bookings(fvr_filter_args());
+    $assign = fvr_assignments($rows);
+    $pilotsById = array_column(fvr_pilots(), null, 'id');
+    foreach ($rows as $b) {
         fputcsv($out, [$b['reference'], $b['date'], $b['time'], $b['flight_name'], $b['passengers'], $b['price'],
                        $b['name'], $b['email'], $b['phone'], $b['weights'], $b['message'],
-                       $labels[$b['status']] ?? $b['status'], $b['admin_notes'], $b['created_at']], ';', '"', '\\');
+                       $labels[$b['status']] ?? $b['status'], implode(', ', fvr_pilot_names($assign[(int) $b['id']] ?? [], $pilotsById)),
+                       $b['admin_notes'], $b['created_at']], ';', '"', '\\');
     }
     exit;
 });
@@ -272,11 +306,12 @@ function fvr_page_bookings(): void
         <p>Aucune réservation pour ces critères.</p>
       <?php else: ?>
       <table class="widefat striped fvr-table">
-        <thead><tr><th>Heure</th><th>Réf.</th><th>Client</th><th>Contact</th><th>Vol</th><th class="num">Pax</th><th>Poids</th><th class="num">Prix</th><th>Statut</th></tr></thead>
+        <thead><tr><th>Heure</th><th>Réf.</th><th>Client</th><th>Contact</th><th>Vol</th><th class="num">Pax</th><th>Poids</th><th>Pilotes</th><th class="num">Prix</th><th>Statut</th></tr></thead>
         <tbody>
+        <?php $assign = fvr_assignments($bookings); $pilotsById = array_column(fvr_pilots(), null, 'id'); ?>
         <?php $lastDate = null; foreach ($bookings as $b): $edit = admin_url('admin.php?page=fvr-edit&id=' . (int) $b['id']); ?>
           <?php if ($b['date'] !== $lastDate): $lastDate = $b['date']; ?>
-            <tr class="fvr-day"><td colspan="9"><?php echo esc_html(ucfirst(fvr_format_date($b['date']))); ?></td></tr>
+            <tr class="fvr-day"><td colspan="10"><?php echo esc_html(ucfirst(fvr_format_date($b['date']))); ?></td></tr>
           <?php endif; ?>
           <tr>
             <td><?php echo esc_html($b['time']); ?></td>
@@ -293,6 +328,10 @@ function fvr_page_bookings(): void
             <td><?php echo esc_html($b['flight_name']); ?></td>
             <td class="num"><?php echo (int) $b['passengers']; ?></td>
             <td><?php echo esc_html($b['weights']); ?></td>
+            <td><?php foreach ($assign[(int) $b['id']] ?? [] as $pid): ?>
+              <?php if ($pid && isset($pilotsById[$pid])): ?><span class="fvr-pilot" style="--c:<?php echo esc_attr($pilotsById[$pid]['color']); ?>"><?php echo esc_html($pilotsById[$pid]['name']); ?></span>
+              <?php else: ?><span class="fvr-pilot fvr-pilot-missing">à définir</span><?php endif; ?>
+            <?php endforeach; ?></td>
             <td class="num"><?php echo fvr_chf($b['price']); ?></td>
             <td>
               <?php echo fvr_form_open('status'); ?>
@@ -327,11 +366,6 @@ function fvr_page_edit(): void
         $b = $row;
     }
     $flights = $wpdb->get_results('SELECT * FROM ' . fvr_table('flights') . ' ORDER BY sort_order, id', ARRAY_A);
-    $slots = $wpdb->get_col('SELECT time FROM ' . fvr_table('slots') . ' ORDER BY time');
-    if ($b['time'] && !in_array($b['time'], $slots, true)) {
-        $slots[] = $b['time'];
-        sort($slots);
-    }
     ?>
     <div class="wrap fvr-admin">
       <h1><?php echo $id ? 'Réservation ' . esc_html($b['reference']) : 'Nouvelle réservation (téléphone, sur place…)'; ?></h1>
@@ -345,7 +379,7 @@ function fvr_page_edit(): void
           <label>Date <input type="date" name="date" value="<?php echo esc_attr($b['date']); ?>" required></label>
           <label>Heure
             <select name="time" required>
-              <?php foreach ($slots as $t): ?><option<?php selected($t, $b['time']); ?>><?php echo esc_html($t); ?></option><?php endforeach; ?>
+              <?php foreach (fvr_time_choices((string) $b['time']) as $t): ?><option<?php selected($t, $b['time']); ?>><?php echo esc_html($t); ?></option><?php endforeach; ?>
             </select>
           </label>
           <label>Vol
@@ -368,8 +402,35 @@ function fvr_page_edit(): void
           <label>Téléphone <input type="tel" name="phone" value="<?php echo esc_attr($b['phone']); ?>"></label>
           <label>Poids <input type="text" name="weights" value="<?php echo esc_attr($b['weights']); ?>"></label>
         </div>
+        <?php
+          $allPilots = fvr_pilots();
+          $seats = $id ? (fvr_assignments([$b])[$id] ?? []) : array_fill(0, max(1, (int) $b['passengers']), 'auto');
+          $busy = $id ? fvr_busy_pilots($b['date'], $b['time'], $id) : [];
+          $pilotOptions = function ($selected) use ($allPilots, $busy, $id) {
+              $h = $id ? '' : '<option value="auto"' . selected($selected, 'auto', false) . '>Automatique (ordre par défaut)</option>';
+              $h .= '<option value="0"' . ($selected === 0 ? ' selected' : '') . '>— À définir —</option>';
+              foreach ($allPilots as $pl) {
+                  $h .= '<option value="' . (int) $pl['id'] . '"' . ($selected === $pl['id'] ? ' selected' : '') . '>' . esc_html($pl['name'])
+                      . ($pl['default_rank'] ? ' (n°' . (int) $pl['default_rank'] . ')' : '') . (in_array($pl['id'], $busy, true) ? ' – déjà en vol à cette heure' : '')
+                      . ($pl['active'] ? '' : ' – inactif') . '</option>';
+              }
+              return $h;
+          };
+        ?>
+        <fieldset class="fvr-seats">
+          <legend>Pilotes (un par passager)</legend>
+          <?php if (!$allPilots): ?>
+            <p class="description">Aucun pilote enregistré. <a href="<?php echo esc_url(admin_url('admin.php?page=fvr-pilots')); ?>">Créer les profils pilotes</a></p>
+          <?php endif; ?>
+          <div id="fvr-seats">
+            <?php foreach ($seats as $i => $sel): ?>
+              <label>Passager <?php echo $i + 1; ?> <select name="pilots[]"><?php echo $pilotOptions($sel); ?></select></label>
+            <?php endforeach; ?>
+          </div>
+          <template id="fvr-seat-tpl"><label>Passager <span></span> <select name="pilots[]"><?php echo $pilotOptions($id ? 0 : 'auto'); ?></select></label></template>
+        </fieldset>
         <label>Message du client <textarea name="message" rows="3"><?php echo esc_textarea($b['message']); ?></textarea></label>
-        <label>Notes internes (pilote, paiement…) <textarea name="admin_notes" rows="3"><?php echo esc_textarea($b['admin_notes']); ?></textarea></label>
+        <label>Notes internes (paiement…) <textarea name="admin_notes" rows="3"><?php echo esc_textarea($b['admin_notes']); ?></textarea></label>
         <p>
           <button class="button button-primary">Enregistrer</button>
           <?php if ($b['email']): ?><a class="button" href="mailto:<?php echo esc_attr($b['email']); ?>">Écrire au client</a><?php endif; ?>
@@ -391,6 +452,17 @@ function fvr_page_edit(): void
         var f = document.getElementById('fvr-flight'), p = document.getElementById('fvr-pax'), t = document.getElementById('fvr-price');
         function upd() { if (f.selectedOptions[0]) t.value = (parseFloat(f.selectedOptions[0].dataset.price) || 0) * (parseInt(p.value, 10) || 0); }
         f.addEventListener('change', upd); p.addEventListener('input', upd);
+        // Un sélecteur de pilote par passager
+        var seats = document.getElementById('fvr-seats'), tpl = document.getElementById('fvr-seat-tpl');
+        p.addEventListener('input', function () {
+          var n = Math.max(1, parseInt(p.value, 10) || 1);
+          while (seats.children.length < n) {
+            var node = tpl.content.firstElementChild.cloneNode(true);
+            node.querySelector('span').textContent = seats.children.length + 1;
+            seats.appendChild(node);
+          }
+          while (seats.children.length > n) seats.removeChild(seats.lastElementChild);
+        });
         <?php if (!$id): ?>upd();<?php endif; ?>
       })();
     </script>
@@ -473,7 +545,7 @@ function fvr_page_settings(): void
           <tbody>
           <?php foreach (array_merge($slots, [$newSlot]) as $sl): $sid = 'fvr-slot-' . (int) $sl['id']; ?>
             <tr>
-              <td><input form="<?php echo $sid; ?>" type="time" name="time" value="<?php echo esc_attr($sl['time']); ?>" required></td>
+              <td><input form="<?php echo $sid; ?>" type="time" name="time" step="900" value="<?php echo esc_attr($sl['time']); ?>" required></td>
               <td><input form="<?php echo $sid; ?>" type="number" min="0" name="capacity" value="<?php echo (int) $sl['capacity']; ?>"></td>
               <td><input form="<?php echo $sid; ?>" type="checkbox" name="active" value="1"<?php checked($sl['active'], 1); ?>></td>
               <td class="fvr-nowrap">
@@ -538,6 +610,79 @@ function fvr_page_settings(): void
           <p><button class="button button-primary">Enregistrer les réglages</button></p>
         </form>
       </div>
+    </div>
+    <?php
+}
+
+// ---------- Page : pilotes ----------
+
+function fvr_page_pilots(): void
+{
+    $pilots = fvr_pilots();
+    $colors = ['#0b57d0', '#0b8043', '#e37400', '#8e24aa', '#d81b60', '#039be5', '#795548', '#3f51b5'];
+    $new = ['id' => 0, 'name' => '', 'phone' => '', 'email' => '', 'color' => $colors[count($pilots) % count($colors)],
+            'default_rank' => 0, 'active' => 1, 'token' => ''];
+    $maxRank = max(5, count($pilots) + 1);
+    ?>
+    <div class="wrap fvr-admin">
+      <h1>Pilotes</h1>
+      <?php fvr_show_flash(); ?>
+      <div class="fvr-panel">
+        <p><strong>Ordre par défaut :</strong> lors d'une réservation, chaque passager reçoit automatiquement un pilote,
+          dans cet ordre (n°1, puis n°2…), en sautant ceux qui volent déjà à la même heure.
+          Les pilotes sans ordre ne sont jamais attribués automatiquement : les places restantes sont « à définir »
+          et vous les choisissez dans la réservation (ou lors de la confirmation).</p>
+        <p><strong>Lien personnel :</strong> chaque pilote a son propre lien vers le planning (ses vols en priorité, lecture seule)
+          et son abonnement agenda qui ne contient que ses vols.</p>
+      </div>
+
+      <?php foreach (array_merge($pilots, [$new]) as $pl): $fid = 'fvr-pilot-' . (int) $pl['id']; ?>
+        <div class="fvr-panel fvr-pilot-card<?php echo $pl['active'] ? '' : ' fvr-inactive'; ?>" style="--c:<?php echo esc_attr($pl['color']); ?>">
+          <h2><?php echo $pl['id'] ? esc_html($pl['name']) : 'Ajouter un pilote'; ?>
+            <?php if ($pl['id'] && $pl['default_rank']): ?><span class="fvr-rank">Pilote n°<?php echo (int) $pl['default_rank']; ?> par défaut</span><?php endif; ?>
+            <?php if (!$pl['active']): ?><span class="fvr-rank">inactif</span><?php endif; ?></h2>
+          <?php echo fvr_form_open('save_pilot', 'id="' . $fid . '"'); ?>
+            <input type="hidden" name="id" value="<?php echo (int) $pl['id']; ?>">
+            <div class="fvr-grid">
+              <label>Nom <input type="text" name="name" value="<?php echo esc_attr($pl['name']); ?>" required placeholder="ex. Tristan"></label>
+              <label>Téléphone <input type="tel" name="phone" value="<?php echo esc_attr($pl['phone']); ?>"></label>
+              <label>E-mail <input type="email" name="email" value="<?php echo esc_attr($pl['email']); ?>"></label>
+              <label>Ordre par défaut
+                <select name="default_rank">
+                  <option value="0">— Aucun (choisi manuellement)</option>
+                  <?php for ($r = 1; $r <= $maxRank; $r++): ?>
+                    <option value="<?php echo $r; ?>"<?php selected($r, (int) $pl['default_rank']); ?>>Pilote n°<?php echo $r; ?></option>
+                  <?php endfor; ?>
+                </select>
+              </label>
+              <label>Couleur <input type="color" name="color" value="<?php echo esc_attr($pl['color']); ?>"></label>
+            </div>
+            <label class="fvr-check"><input type="checkbox" name="active" value="1"<?php checked($pl['active'], 1); ?>> Actif (peut être attribué, lien fonctionnel)</label>
+            <p><button class="button button-primary"><?php echo $pl['id'] ? 'Enregistrer' : 'Ajouter le pilote'; ?></button></p>
+          </form>
+          <?php if ($pl['id']): ?>
+            <p class="description">Lien personnel à envoyer à <?php echo esc_html($pl['name']); ?> :</p>
+            <p class="fvr-linkrow"><input type="text" class="large-text code" readonly value="<?php echo esc_attr(fvr_pilot_planning_url($pl)); ?>" onclick="this.select()">
+              <a class="button" href="<?php echo esc_url(fvr_pilot_planning_url($pl)); ?>" target="_blank">Ouvrir</a>
+              <?php if ($pl['phone']): ?>
+                <a class="button" target="_blank" rel="noopener" href="<?php echo esc_url('https://wa.me/' . preg_replace('/\D/', '', preg_replace('/^0(?!0)/', '41', preg_replace('/^00/', '', preg_replace('/[^0-9]/', '', $pl['phone'])))) . '?text=' . rawurlencode('Voici ton planning des vols : ' . fvr_pilot_planning_url($pl))); ?>">Envoyer par WhatsApp</a>
+              <?php endif; ?>
+            </p>
+            <p class="description">Abonnement agenda (uniquement ses vols) :</p>
+            <p><input type="text" class="large-text code" readonly value="<?php echo esc_attr(fvr_pilot_ics_url($pl)); ?>" onclick="this.select()"></p>
+            <p>
+              <?php echo fvr_form_open('regen_pilot_token', 'class="fvr-inline" onsubmit="return confirm(\'L\\\'ancien lien de ce pilote ne fonctionnera plus. Continuer ?\')"'); ?>
+                <input type="hidden" name="id" value="<?php echo (int) $pl['id']; ?>">
+                <button class="button">Générer un nouveau lien</button>
+              </form>
+              <?php echo fvr_form_open('delete_pilot', 'class="fvr-inline" onsubmit="return confirm(\'Supprimer ce pilote ? Ses vols repasseront « à définir ».\')"'); ?>
+                <input type="hidden" name="id" value="<?php echo (int) $pl['id']; ?>">
+                <button class="button-link button-link-delete">Supprimer le pilote</button>
+              </form>
+            </p>
+          <?php endif; ?>
+        </div>
+      <?php endforeach; ?>
     </div>
     <?php
 }

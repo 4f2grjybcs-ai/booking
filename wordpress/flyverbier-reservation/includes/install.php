@@ -66,6 +66,28 @@ function fvr_install(): void
   KEY date_time (date,time)
 ) $charset;");
 
+    dbDelta("CREATE TABLE " . fvr_table('pilots') . " (
+  id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+  name varchar(100) NOT NULL,
+  phone varchar(40) NOT NULL DEFAULT '',
+  email varchar(190) NOT NULL DEFAULT '',
+  color varchar(7) NOT NULL DEFAULT '#0b57d0',
+  default_rank int(11) NOT NULL DEFAULT 0,
+  token varchar(64) NOT NULL,
+  active tinyint(1) NOT NULL DEFAULT 1,
+  PRIMARY KEY  (id),
+  UNIQUE KEY token (token)
+) $charset;");
+
+    // Pilote attribué à chaque place (1 passager = 1 pilote en biplace)
+    dbDelta("CREATE TABLE " . fvr_table('assign') . " (
+  booking_id bigint(20) unsigned NOT NULL,
+  seat int(11) NOT NULL,
+  pilot_id bigint(20) unsigned NOT NULL,
+  PRIMARY KEY  (booking_id,seat),
+  KEY pilot_id (pilot_id)
+) $charset;");
+
     // Données de départ, uniquement lors de la première installation
     if (!(int) $wpdb->get_var('SELECT COUNT(*) FROM ' . fvr_table('flights'))) {
         $flights = [

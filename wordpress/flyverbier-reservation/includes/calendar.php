@@ -29,6 +29,23 @@ function fvr_valid_token($token): bool
     return is_string($token) && $token !== '' && hash_equals(fvr_planning_token(), $token);
 }
 
+/**
+ * Jeton de lien : ['pilot' => null] pour le lien d'équipe, ['pilot' => [...]] pour un lien personnel, null si invalide.
+ */
+function fvr_token_context($token): ?array
+{
+    if (fvr_valid_token($token)) {
+        return ['pilot' => null];
+    }
+    $pilot = fvr_pilot_by_token($token);
+    return $pilot ? ['pilot' => $pilot] : null;
+}
+
+function fvr_can_view_calendar(WP_REST_Request $req): bool
+{
+    return current_user_can(fvr_cap()) || fvr_token_context($req->get_param('token')) !== null;
+}
+
 function fvr_planning_url(): string
 {
     return add_query_arg('fvr_planning', fvr_planning_token(), home_url('/'));
@@ -83,8 +100,16 @@ function fvr_search_bookings(string $q, bool $canEdit): array
     $args[] = gmdate('Y-m-d', strtotime(fvr_today() . ' -60 days'));
     $rows = $wpdb->get_results($wpdb->prepare('SELECT * FROM ' . fvr_table('bookings') . ' WHERE (' . implode(' OR ', $where)
         . ') AND date >= %s ORDER BY date, time LIMIT 30', $args), ARRAY_A);
-    return array_map(function ($b) use ($canEdit) {
-        return fvr_booking_view($b, $canEdit);
+    return fvr_bookings_with_pilots($rows, $canEdit);
+}
+
+function fvr_bookings_with_pilots(array $rows, bool $canEdit): array
+{
+    $assign = fvr_assignments($rows);
+    return array_map(function ($b) use ($canEdit, $assign) {
+        $out = fvr_booking_view($b, $canEdit);
+        $out['pilots'] = $assign[(int) $b['id']] ?? [];
+        return $out;
     }, $rows);
 }
 
@@ -94,9 +119,7 @@ function fvr_calendar_data(string $from, string $to, bool $canEdit): array
     $bookings = $wpdb->get_results($wpdb->prepare(
         'SELECT * FROM ' . fvr_table('bookings') . ' WHERE date BETWEEN %s AND %s ORDER BY date, time, id', $from, $to), ARRAY_A);
 
-    $bookings = array_map(function ($b) use ($canEdit) {
-        return fvr_booking_view($b, $canEdit);
-    }, $bookings);
+    $bookings = fvr_bookings_with_pilots($bookings, $canEdit);
 
     $data = [
         'from'     => $from,
@@ -109,6 +132,9 @@ function fvr_calendar_data(string $from, string $to, bool $canEdit): array
         'blocked'  => $wpdb->get_results($wpdb->prepare(
             'SELECT date, reason FROM ' . fvr_table('blocked') . ' WHERE date BETWEEN %s AND %s', $from, $to), ARRAY_A),
         'bookings' => $bookings,
+        'pilots'   => array_map(function ($p) {
+            return ['id' => $p['id'], 'name' => $p['name'], 'color' => $p['color'], 'rank' => $p['default_rank'], 'active' => $p['active']];
+        }, fvr_pilots()),
     ];
     if ($canEdit) {
         $data['flights'] = array_map(function ($f) {
@@ -123,9 +149,7 @@ function fvr_calendar_data(string $from, string $to, bool $canEdit): array
 add_action('rest_api_init', function () {
     register_rest_route('fvr/v1', '/calendar', [
         'methods'             => 'GET',
-        'permission_callback' => function (WP_REST_Request $req) {
-            return current_user_can(fvr_cap()) || fvr_valid_token($req->get_param('token'));
-        },
+        'permission_callback' => 'fvr_can_view_calendar',
         'callback'            => function (WP_REST_Request $req) {
             $from = (string) $req->get_param('from');
             $to = (string) $req->get_param('to');
@@ -142,9 +166,7 @@ add_action('rest_api_init', function () {
 
     register_rest_route('fvr/v1', '/search', [
         'methods'             => 'GET',
-        'permission_callback' => function (WP_REST_Request $req) {
-            return current_user_can(fvr_cap()) || fvr_valid_token($req->get_param('token'));
-        },
+        'permission_callback' => 'fvr_can_view_calendar',
         'callback'            => function (WP_REST_Request $req) {
             $res = rest_ensure_response(['bookings' => fvr_search_bookings((string) $req->get_param('q'), current_user_can(fvr_cap()))]);
             $res->header('Cache-Control', 'no-store');
@@ -170,8 +192,7 @@ add_action('rest_api_init', function () {
         'methods'             => 'DELETE',
         'permission_callback' => $adminOnly,
         'callback'            => function (WP_REST_Request $req) {
-            global $wpdb;
-            $wpdb->delete(fvr_table('bookings'), ['id' => (int) $req['id']]);
+            fvr_delete_booking((int) $req['id']);
             return ['ok' => true];
         },
     ]);
@@ -179,9 +200,10 @@ add_action('rest_api_init', function () {
 
 // ---------- Affichage de l'application calendrier ----------
 
-function fvr_calendar_config(bool $canEdit, string $token = ''): array
+function fvr_calendar_config(bool $canEdit, string $token = '', ?array $pilot = null): array
 {
     return [
+        'me'       => $pilot ? ['id' => (int) $pilot['id'], 'name' => $pilot['name']] : null,
         'api'      => esc_url_raw(rest_url('fvr/v1/')),
         'token'    => $token,
         'nonce'    => $canEdit ? wp_create_nonce('wp_rest') : '',
@@ -189,7 +211,7 @@ function fvr_calendar_config(bool $canEdit, string $token = ''): array
         'today'    => fvr_today(),
         'site'     => wp_specialchars_decode(get_bloginfo('name'), ENT_QUOTES),
         'statuses' => fvr_status_labels(),
-        'icsUrl'   => $token ? fvr_ics_url() : '',
+        'icsUrl'   => $pilot ? fvr_pilot_ics_url($pilot) : ($token ? fvr_ics_url() : ''),
         'editUrl'  => $canEdit ? admin_url('admin.php?page=fvr-edit&id=') : '',
     ];
 }
@@ -212,11 +234,13 @@ add_action('template_redirect', function () {
     nocache_headers();
     header('X-Robots-Tag: noindex, nofollow');
     header('Referrer-Policy: no-referrer');
-    if (!$canEdit && !fvr_valid_token($token)) {
+    $ctx = fvr_token_context($token);
+    if (!$canEdit && !$ctx) {
         status_header(403);
         wp_die('Ce lien de planning n\'est pas (ou plus) valide. Demandez le nouveau lien à l\'administrateur.', 'Lien invalide', ['response' => 403]);
     }
-    $config = fvr_calendar_config($canEdit, fvr_valid_token($token) ? $token : '');
+    $pilot = $ctx['pilot'] ?? null;
+    $config = fvr_calendar_config($canEdit, $ctx ? $token : '', $pilot);
     $site = get_bloginfo('name');
     ?><!DOCTYPE html>
 <html lang="fr">
@@ -228,7 +252,7 @@ add_action('template_redirect', function () {
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Planning">
-<title>Planning · <?php echo esc_html($site); ?></title>
+<title><?php echo esc_html($pilot ? 'Planning de ' . $pilot['name'] : 'Planning · ' . $site); ?></title>
 <link rel="stylesheet" href="<?php echo esc_url(FVR_URL . 'assets/calendar.css?ver=' . FVR_VERSION); ?>">
 </head>
 <body class="fvr-cal-page">
@@ -271,20 +295,33 @@ function fvr_ics_escape(string $s): string
 function fvr_output_ics(string $token): void
 {
     global $wpdb;
-    if (!fvr_valid_token($token)) {
+    $ctx = fvr_token_context($token);
+    if (!$ctx) {
         status_header(403);
         exit('Lien invalide');
     }
+    $pilot = $ctx['pilot'];
     $from = gmdate('Y-m-d', strtotime(fvr_today() . ' -30 days'));
-    $rows = $wpdb->get_results($wpdb->prepare('SELECT * FROM ' . fvr_table('bookings')
-        . " WHERE date >= %s AND status <> 'cancelled' ORDER BY date, time", $from), ARRAY_A);
+    if ($pilot) {
+        $rows = $wpdb->get_results($wpdb->prepare('SELECT DISTINCT b.* FROM ' . fvr_table('bookings') . ' b JOIN ' . fvr_table('assign')
+            . " a ON a.booking_id = b.id WHERE a.pilot_id = %d AND b.date >= %s AND b.status <> 'cancelled' ORDER BY b.date, b.time",
+            $pilot['id'], $from), ARRAY_A);
+    } else {
+        $rows = $wpdb->get_results($wpdb->prepare('SELECT * FROM ' . fvr_table('bookings')
+            . " WHERE date >= %s AND status <> 'cancelled' ORDER BY date, time", $from), ARRAY_A);
+    }
+    $assign = fvr_assignments($rows);
+    $pilotsById = [];
+    foreach (fvr_pilots() as $p) {
+        $pilotsById[$p['id']] = $p;
+    }
     $tz = wp_timezone();
     $utc = new DateTimeZone('UTC');
     $labels = fvr_status_labels();
     $host = wp_parse_url(home_url(), PHP_URL_HOST);
 
     $lines = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Reservation Parapente//FR', 'CALSCALE:GREGORIAN',
-              'METHOD:PUBLISH', 'X-WR-CALNAME:' . fvr_ics_escape(get_bloginfo('name') . ' – Vols'),
+              'METHOD:PUBLISH', 'X-WR-CALNAME:' . fvr_ics_escape($pilot ? 'Mes vols – ' . get_bloginfo('name') : get_bloginfo('name') . ' – Vols'),
               'REFRESH-INTERVAL;VALUE=DURATION:PT30M', 'X-PUBLISHED-TTL:PT30M'];
     foreach ($rows as $b) {
         $start = new DateTime($b['date'] . ' ' . $b['time'], $tz);
@@ -295,6 +332,7 @@ function fvr_output_ics(string $token): void
             . "\nTéléphone : {$b['phone']}"
             . ($b['weights'] ? "\nPoids : {$b['weights']}" : '')
             . ($b['message'] ? "\nMessage : {$b['message']}" : '')
+            . "\nPilotes : " . implode(', ', fvr_pilot_names($assign[(int) $b['id']] ?? [], $pilotsById))
             . ($b['admin_notes'] ? "\nNotes : {$b['admin_notes']}" : '');
         array_push($lines,
             'BEGIN:VEVENT',

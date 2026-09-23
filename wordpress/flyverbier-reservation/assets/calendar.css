@@ -1,0 +1,152 @@
+/* Calendrier des réservations (page pilotes et wp-admin) */
+.fvr-cal, .fvr-modal-bg {
+  --c-text: #1c2430;
+  --c-muted: #637083;
+  --c-border: #d9dfe7;
+  --c-bg: #f5f7fa;
+  --c-accent: #0a6cbc;
+  --c-accent-soft: #e6f1fb;
+  --c-pending: #b86e00;
+  --c-pending-bg: #fff4e0;
+  --c-confirmed: #1a7f37;
+  --c-confirmed-bg: #e3f5e8;
+  --c-done: #4b5563;
+  --c-done-bg: #eceff3;
+  --c-cancelled: #b42318;
+  --c-cancelled-bg: #fdecea;
+  color: var(--c-text);
+  font: 14px/1.4 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+.fvr-cal *, .fvr-modal-bg * { box-sizing: border-box; }
+.fvr-cal [hidden], .fvr-modal-bg [hidden] { display: none !important; }
+
+/* Page autonome */
+body.fvr-cal-page { margin: 0; background: #f5f7fa; }
+.fvr-cal-top {
+  display: flex; flex-wrap: wrap; gap: 4px 16px; align-items: baseline; justify-content: space-between;
+  padding: 12px 16px; background: #0a6cbc; color: #fff; font: 15px/1.4 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+.fvr-cal-mode { font-size: 13px; opacity: .9; }
+body.fvr-cal-page .fvr-cal { padding: 12px 16px 32px; max-width: 1400px; margin: 0 auto; }
+.wrap .fvr-cal { margin-top: 12px; }
+
+.fvr-cal-loading, .fvr-empty { color: var(--c-muted); }
+.fvr-cal-error { color: var(--c-cancelled); font-weight: 600; }
+
+/* Barre d'outils */
+.fvr-cal-toolbar { display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+.fvr-cal-nav, .fvr-cal-actions { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.fvr-cal-nav h2 { font-size: 18px; margin: 0 0 0 8px; font-weight: 600; text-transform: capitalize; }
+.fvr-cal button, .fvr-modal button, .fvr-cal-link, .fvr-modal-actions a {
+  font: inherit; padding: 6px 12px; border: 1px solid var(--c-border); border-radius: 6px;
+  background: #fff; color: var(--c-text); cursor: pointer; text-decoration: none; line-height: 1.3;
+}
+.fvr-cal button:hover, .fvr-modal button:hover, .fvr-cal-link:hover { border-color: var(--c-accent); }
+.fvr-cal-views { display: inline-flex; }
+.fvr-cal-views button { border-radius: 0; margin-left: -1px; }
+.fvr-cal-views button:first-child { border-radius: 6px 0 0 6px; margin-left: 0; }
+.fvr-cal-views button:last-child { border-radius: 0 6px 6px 0; }
+.fvr-cal-views button.active { background: var(--c-accent); border-color: var(--c-accent); color: #fff; position: relative; }
+.fvr-cal .fvr-cal-primary, .fvr-modal .fvr-cal-primary { background: var(--c-accent); border-color: var(--c-accent); color: #fff; font-weight: 600; }
+.fvr-cal-toggle { display: inline-flex; gap: 4px; align-items: center; color: var(--c-muted); }
+.fvr-cal-link { color: var(--c-accent); }
+
+.fvr-cal-legend { display: flex; flex-wrap: wrap; gap: 4px 6px; align-items: center; color: var(--c-muted); font-size: 12px; margin-bottom: 10px; }
+.fvr-chip-dot { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-left: 8px; border-left: 3px solid; }
+.fvr-cal-hint { margin-left: auto; }
+
+/* Couleurs par statut */
+.st-pending { --st: var(--c-pending); --st-bg: var(--c-pending-bg); }
+.st-confirmed { --st: var(--c-confirmed); --st-bg: var(--c-confirmed-bg); }
+.st-done { --st: var(--c-done); --st-bg: var(--c-done-bg); }
+.st-cancelled { --st: var(--c-cancelled); --st-bg: var(--c-cancelled-bg); }
+.fvr-chip-dot { background: var(--st); border-color: var(--st); }
+
+/* Vue semaine */
+.fvr-cal-scroll { overflow-x: auto; background: #fff; border: 1px solid var(--c-border); border-radius: 8px; }
+.fvr-cal-week { width: 100%; min-width: 900px; border-collapse: collapse; table-layout: fixed; }
+.fvr-cal-week th, .fvr-cal-week td { border: 1px solid var(--c-border); padding: 4px; vertical-align: top; }
+.fvr-cal-week thead th { background: var(--c-bg); font-weight: 600; text-align: left; padding: 6px; }
+.fvr-cal-week thead th:first-child { width: 58px; }
+.fvr-cal-week thead th a { color: inherit; text-decoration: none; text-transform: capitalize; }
+.fvr-cal-week thead th small { display: block; font-weight: 400; color: var(--c-muted); }
+.fvr-cal-week thead th.today { background: var(--c-accent-soft); color: var(--c-accent); }
+.fvr-time { background: var(--c-bg); font-weight: 600; text-align: center; }
+.fvr-cell { min-height: 56px; transition: background .1s; }
+.fvr-cal-week td.fvr-cell { height: 64px; }
+.fvr-cell.today { background: #fafcff; }
+.fvr-cell.past { background: #fbfbfb; }
+.fvr-cell.blocked, .fvr-cal-week thead th.blocked { background: repeating-linear-gradient(135deg, #f7f7f7, #f7f7f7 6px, #efefef 6px, #efefef 12px); }
+.fvr-cell.drop-target { background: var(--c-accent-soft) !important; outline: 2px dashed var(--c-accent); outline-offset: -2px; }
+.fvr-closed { color: var(--c-cancelled) !important; }
+.fvr-cell-head { display: flex; justify-content: space-between; align-items: center; min-height: 18px; margin-bottom: 2px; }
+.fvr-cal .fvr-add { padding: 0 6px; font-size: 13px; line-height: 16px; color: var(--c-muted); opacity: 0; border-color: transparent; background: transparent; }
+.fvr-cell:hover .fvr-add, .fvr-add:focus { opacity: 1; border-color: var(--c-border); background: #fff; }
+.fvr-load { font-size: 11px; color: var(--c-muted); font-variant-numeric: tabular-nums; }
+.fvr-load.some { color: var(--c-accent); }
+.fvr-load.full { color: var(--c-confirmed); font-weight: 700; }
+.fvr-load.over { color: #fff; background: var(--c-cancelled); border-radius: 4px; padding: 0 4px; font-weight: 700; }
+
+.fvr-chip {
+  display: block; margin-top: 3px; padding: 3px 6px; border-radius: 5px; cursor: pointer;
+  background: var(--st-bg); border-left: 3px solid var(--st); font-size: 12px; line-height: 1.3; overflow: hidden;
+}
+.fvr-chip strong { font-weight: 600; }
+.fvr-chip span { color: var(--st); font-weight: 600; white-space: nowrap; }
+.fvr-chip small { display: block; color: var(--c-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.fvr-chip.st-cancelled strong { text-decoration: line-through; }
+.fvr-chip:hover, .fvr-card:hover { filter: brightness(.97); }
+.fvr-chip:focus-visible, .fvr-card:focus-visible { outline: 2px solid var(--c-accent); outline-offset: 1px; }
+.fvr-chip[draggable="true"] { cursor: grab; }
+
+/* Vue jour */
+.fvr-cal-day { display: grid; gap: 10px; max-width: 760px; }
+.fvr-closed-banner { background: var(--c-cancelled-bg); color: var(--c-cancelled); padding: 8px 12px; border-radius: 8px; font-weight: 600; margin: 0; }
+.fvr-day-slot { background: #fff; border: 1px solid var(--c-border); border-radius: 8px; padding: 10px 12px; }
+.fvr-day-slot h3 { display: flex; gap: 10px; align-items: center; margin: 0 0 6px; font-size: 16px; }
+.fvr-day-slot h3 .fvr-add { margin-left: auto; opacity: 1; border-color: var(--c-border); }
+.fvr-day-slot .fvr-empty { margin: 0; font-size: 13px; }
+.fvr-card { padding: 8px 10px; margin-top: 6px; border-radius: 6px; background: var(--st-bg); border-left: 4px solid var(--st); cursor: pointer; display: grid; gap: 2px; }
+.fvr-card-top { display: flex; justify-content: space-between; gap: 8px; align-items: center; }
+.fvr-card a { color: var(--c-accent); }
+.fvr-note { color: var(--c-muted); font-size: 13px; white-space: pre-line; }
+.fvr-badge { display: inline-block; padding: 1px 8px; border-radius: 999px; font-size: 12px; font-weight: 600; color: var(--st); background: #fff; border: 1px solid var(--st); }
+
+/* Vue mois */
+.fvr-cal-month { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); border: 1px solid var(--c-border); border-radius: 8px; overflow: hidden; background: var(--c-border); gap: 1px; }
+.fvr-month-head { background: var(--c-bg); padding: 6px; font-weight: 600; text-align: center; }
+.fvr-month-day { background: #fff; min-height: 96px; padding: 4px 6px; cursor: pointer; overflow: hidden; }
+.fvr-month-day:hover { background: #fafcff; }
+.fvr-month-day.other { background: #fafafa; color: #9aa3ae; }
+.fvr-month-day.today .fvr-month-num span { background: var(--c-accent); color: #fff; border-radius: 999px; padding: 0 6px; }
+.fvr-month-day.blocked { background: repeating-linear-gradient(135deg, #f7f7f7, #f7f7f7 6px, #efefef 6px, #efefef 12px); }
+.fvr-month-num { display: flex; justify-content: space-between; align-items: center; font-weight: 600; margin-bottom: 2px; }
+.fvr-month-num small { font-weight: 400; color: var(--c-muted); font-size: 11px; }
+.fvr-month-item { font-size: 11px; padding: 1px 4px; margin-top: 2px; border-radius: 3px; background: var(--st-bg); border-left: 3px solid var(--st); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.fvr-month-more { font-size: 11px; color: var(--c-muted); margin-top: 2px; }
+
+/* Fenêtre modale */
+.fvr-modal-bg { position: fixed; inset: 0; background: rgba(15, 23, 42, .45); z-index: 100000; display: flex; align-items: flex-start; justify-content: center; padding: 5vh 12px; overflow-y: auto; }
+.fvr-modal { position: relative; background: #fff; border-radius: 10px; width: 100%; max-width: 640px; padding: 20px; box-shadow: 0 20px 50px rgba(0, 0, 0, .25); }
+.fvr-modal h2 { margin: 0 32px 10px 0; font-size: 20px; }
+.fvr-modal .fvr-modal-close { position: absolute; top: 10px; right: 10px; border: 0; font-size: 22px; line-height: 1; padding: 4px 10px; }
+.fvr-modal dl { display: grid; grid-template-columns: 110px 1fr; gap: 6px 12px; margin: 12px 0 0; }
+.fvr-modal dt { color: var(--c-muted); }
+.fvr-modal dd { margin: 0; white-space: pre-line; }
+.fvr-modal a { color: var(--c-accent); }
+.fvr-form label { display: block; font-weight: 600; font-size: 13px; margin-bottom: 8px; }
+.fvr-form input, .fvr-form select, .fvr-form textarea {
+  display: block; width: 100%; max-width: none; margin-top: 3px; padding: 6px 8px; font: inherit; font-weight: 400;
+  border: 1px solid var(--c-border); border-radius: 6px; background: #fff; color: var(--c-text); min-height: 34px;
+}
+.fvr-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0 12px; }
+.fvr-modal-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 6px; }
+.fvr-modal .fvr-danger { color: var(--c-cancelled); border-color: #f1b6b0; margin-left: auto; }
+
+@media (max-width: 700px) {
+  .fvr-grid { grid-template-columns: 1fr 1fr; }
+  .fvr-cal-hint { display: none; }
+  .fvr-month-day { min-height: 64px; padding: 3px; }
+  .fvr-month-item { display: none; }
+  .fvr-cal-nav h2 { width: 100%; margin: 4px 0 0; order: 5; }
+}

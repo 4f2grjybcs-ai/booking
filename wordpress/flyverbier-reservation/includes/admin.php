@@ -5,12 +5,6 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
-function fvr_cap(): string
-{
-    // Rôle requis pour gérer les réservations (administrateur par défaut)
-    return apply_filters('fvr_capability', 'manage_options');
-}
-
 add_action('admin_menu', function () {
     global $wpdb;
     $pending = (int) $wpdb->get_var('SELECT COUNT(*) FROM ' . fvr_table('bookings')
@@ -86,32 +80,11 @@ add_action('admin_post_fvr', function () {
 
         case 'save_booking':
             $id = (int) ($p['id'] ?? 0);
-            $editUrl = admin_url('admin.php?page=fvr-edit' . ($id ? '&id=' . $id : ''));
-            if (!fvr_valid_date($p['date'] ?? '') || !preg_match('/^\d{2}:\d{2}$/', $p['time'] ?? '')
-                || trim($p['name'] ?? '') === '' || (int) ($p['passengers'] ?? 0) < 1
-                || !isset(fvr_status_labels()[$p['status'] ?? ''])) {
-                fvr_back($editUrl, 'Veuillez remplir date, heure, nom et passagers.', true);
+            $saved = fvr_save_booking($p, $id);
+            if (is_wp_error($saved)) {
+                fvr_back(admin_url('admin.php?page=fvr-edit' . ($id ? '&id=' . $id : '')), $saved->get_error_message(), true);
             }
-            $flightId = (int) ($p['flight_id'] ?? 0);
-            $flightName = $flightId ? $wpdb->get_var($wpdb->prepare('SELECT name FROM ' . fvr_table('flights') . ' WHERE id = %d', $flightId)) : null;
-            $data = [
-                'date' => $p['date'], 'time' => $p['time'],
-                'flight_id' => $flightName ? $flightId : null,
-                'flight_name' => $flightName ?: sanitize_text_field($p['flight_name'] ?? 'Vol'),
-                'price' => (float) $p['price'], 'passengers' => (int) $p['passengers'],
-                'name' => sanitize_text_field($p['name']), 'email' => sanitize_email($p['email'] ?? ''),
-                'phone' => sanitize_text_field($p['phone'] ?? ''), 'weights' => sanitize_text_field($p['weights'] ?? ''),
-                'message' => sanitize_textarea_field($p['message'] ?? ''), 'status' => $p['status'],
-                'admin_notes' => sanitize_textarea_field($p['admin_notes'] ?? ''), 'updated_at' => fvr_now(),
-            ];
-            if ($id) {
-                $wpdb->update(fvr_table('bookings'), $data, ['id' => $id]);
-                fvr_back($editUrl, 'Réservation enregistrée.');
-            }
-            $data['reference'] = fvr_generate_reference();
-            $data['created_at'] = fvr_now();
-            $wpdb->insert(fvr_table('bookings'), $data);
-            fvr_back(admin_url('admin.php?page=fvr-edit&id=' . $wpdb->insert_id), 'Réservation créée.');
+            fvr_back(admin_url('admin.php?page=fvr-edit&id=' . $saved), $id ? 'Réservation enregistrée.' : 'Réservation créée.');
 
         case 'delete_booking':
             $wpdb->delete(fvr_table('bookings'), ['id' => (int) $p['id']]);
@@ -168,6 +141,10 @@ add_action('admin_post_fvr', function () {
         case 'unblock_date':
             $wpdb->delete(fvr_table('blocked'), ['date' => $p['date'] ?? '']);
             fvr_back($settingsUrl, 'Jour réouvert.');
+
+        case 'regen_token':
+            fvr_regenerate_planning_token();
+            fvr_back($settingsUrl, 'Nouveau lien créé : l\'ancien lien ne fonctionne plus. Envoyez le nouveau à vos pilotes.');
 
         case 'save_settings':
             update_option('fvr_settings', [
@@ -262,6 +239,7 @@ function fvr_page_bookings(): void
     <div class="wrap fvr-admin">
       <h1 class="wp-heading-inline">Réservations</h1>
       <a href="<?php echo esc_url(admin_url('admin.php?page=fvr-edit')); ?>" class="page-title-action">Ajouter</a>
+      <a href="<?php echo esc_url(admin_url('admin.php?page=fvr-calendar')); ?>" class="page-title-action">Calendrier</a>
       <hr class="wp-header-end">
       <?php fvr_show_flash(); ?>
 
@@ -440,6 +418,20 @@ function fvr_page_settings(): void
         <h2>Afficher le formulaire sur le site</h2>
         <p>Créez une page (ex. « Réserver ») et insérez-y ce code (bloc « Code court » / « Shortcode ») :</p>
         <p><code class="fvr-code">[reservation_parapente]</code></p>
+      </div>
+
+      <div class="fvr-panel">
+        <h2>Calendrier des pilotes</h2>
+        <p>Envoyez ce lien à vos pilotes (WhatsApp, e-mail…) : ils voient le planning des vols <strong>sans pouvoir rien modifier</strong>
+          et sans voir les prix ni les e-mails des clients. Vous-même, connecté à WordPress, pouvez modifier les réservations depuis cette même page.</p>
+        <p><input type="text" class="large-text code fvr-copy" readonly value="<?php echo esc_attr(fvr_planning_url()); ?>" onclick="this.select()">
+          <a class="button" href="<?php echo esc_url(fvr_planning_url()); ?>" target="_blank">Ouvrir</a></p>
+        <p class="description">Abonnement agenda (Google Agenda, iPhone, Outlook) — se met à jour automatiquement :</p>
+        <p><input type="text" class="large-text code fvr-copy" readonly value="<?php echo esc_attr(fvr_ics_url()); ?>" onclick="this.select()"></p>
+        <?php echo fvr_form_open('regen_token', 'onsubmit="return confirm(\'L\\\'ancien lien ne fonctionnera plus. Continuer ?\')"'); ?>
+          <p><button class="button">Générer un nouveau lien</button>
+          <span class="description">À faire si le lien a été transmis à une personne qui ne doit plus y avoir accès.</span></p>
+        </form>
       </div>
 
       <div class="fvr-panel">

@@ -10,6 +10,15 @@ Le dossier `wordpress/flyverbier-reservation/` est une extension WordPress.
 4. Créer une page « Réserver » contenant le shortcode `[reservation_parapente]`.
 5. Vérifier **Réglages → Général → Fuseau horaire** = Zurich.
 
+### Calendrier (v1.1)
+
+- **Réservations → Calendrier** : vues jour / semaine / mois, taux de remplissage par créneau,
+  modification d'une réservation en cliquant dessus, déplacement par glisser-déposer, ajout avec « + ».
+- **Lien pour les pilotes** (Réservations → Paramètres) : page web en lecture seule, sans prix ni e-mails,
+  adaptée au téléphone. Le même lien, ouvert par l'administrateur connecté, permet de modifier.
+  « Générer un nouveau lien » invalide l'ancien.
+- **Abonnement agenda** (.ics) pour Google Agenda / iPhone / Outlook, mis à jour automatiquement.
+
 Les données sont enregistrées dans la base de données WordPress (tables `wp_fvr_*`) ;
 elles sont incluses dans les sauvegardes habituelles du site.
 

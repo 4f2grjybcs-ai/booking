@@ -5,6 +5,12 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
+function fvr_cap(): string
+{
+    // Rôle requis pour gérer les réservations (administrateur par défaut)
+    return apply_filters('fvr_capability', 'manage_options');
+}
+
 function fvr_default_settings(): array
 {
     return [
@@ -177,6 +183,51 @@ function fvr_create_booking(array $in)
 
     fvr_send_emails($ref, $flight['name'], $date, $time, $pax, $total, $name, $email, $phone, $weights, $message);
     return ['reference' => $ref, 'total' => $total];
+}
+
+/**
+ * Création / modification d'une réservation par l'administrateur (back office et calendrier).
+ * Pas de contrôle de capacité : l'administrateur peut surbooker volontairement.
+ * Retourne l'id de la réservation ou WP_Error.
+ */
+function fvr_save_booking(array $p, int $id = 0)
+{
+    global $wpdb;
+    $status = (string) ($p['status'] ?? '');
+    if (!fvr_valid_date($p['date'] ?? null) || !preg_match('/^\d{2}:\d{2}$/', (string) ($p['time'] ?? ''))
+        || trim((string) ($p['name'] ?? '')) === '' || (int) ($p['passengers'] ?? 0) < 1
+        || !isset(fvr_status_labels()[$status])) {
+        return new WP_Error('invalid', 'Veuillez remplir date, heure, nom et passagers.', ['status' => 422]);
+    }
+    $existing = null;
+    if ($id) {
+        $existing = $wpdb->get_row($wpdb->prepare('SELECT * FROM ' . fvr_table('bookings') . ' WHERE id = %d', $id), ARRAY_A);
+        if (!$existing) {
+            return new WP_Error('not_found', 'Réservation introuvable.', ['status' => 404]);
+        }
+    }
+    $flightId = (int) ($p['flight_id'] ?? 0);
+    $flightName = $flightId ? $wpdb->get_var($wpdb->prepare('SELECT name FROM ' . fvr_table('flights') . ' WHERE id = %d', $flightId)) : null;
+    $data = [
+        'date' => $p['date'], 'time' => $p['time'],
+        'flight_id' => $flightName ? $flightId : null,
+        'flight_name' => $flightName ?: ($existing['flight_name'] ?? sanitize_text_field($p['flight_name'] ?? 'Vol')),
+        'price' => (float) ($p['price'] ?? 0), 'passengers' => (int) $p['passengers'],
+        'name' => sanitize_text_field($p['name']), 'email' => sanitize_email($p['email'] ?? ''),
+        'phone' => sanitize_text_field($p['phone'] ?? ''), 'weights' => sanitize_text_field($p['weights'] ?? ''),
+        'message' => sanitize_textarea_field($p['message'] ?? ''), 'status' => $status,
+        'admin_notes' => sanitize_textarea_field($p['admin_notes'] ?? ''), 'updated_at' => fvr_now(),
+    ];
+    if ($id) {
+        $wpdb->update(fvr_table('bookings'), $data, ['id' => $id]);
+        return $id;
+    }
+    $data['reference'] = fvr_generate_reference();
+    $data['created_at'] = fvr_now();
+    if (!$wpdb->insert(fvr_table('bookings'), $data)) {
+        return new WP_Error('db', "Erreur lors de l'enregistrement.", ['status' => 500]);
+    }
+    return (int) $wpdb->insert_id;
 }
 
 function fvr_send_emails($ref, $flightName, $date, $time, $pax, $total, $name, $email, $phone, $weights, $message): void

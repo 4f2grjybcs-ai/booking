@@ -81,9 +81,11 @@ function fvr_assignments(array $bookings): array
 function fvr_busy_pilots(string $date, string $time, int $excludeBooking = 0): array
 {
     global $wpdb;
-    return array_map('intval', $wpdb->get_col($wpdb->prepare(
+    $busy = array_map('intval', $wpdb->get_col($wpdb->prepare(
         'SELECT a.pilot_id FROM ' . fvr_table('assign') . ' a JOIN ' . fvr_table('bookings') . ' b ON b.id = a.booking_id'
         . " WHERE b.date = %s AND b.time = %s AND b.status <> 'cancelled' AND b.id <> %d", $date, $time, $excludeBooking)));
+    // Les pilotes absents (absence déclarée) ne sont pas proposés
+    return array_values(array_unique(array_merge($busy, fvr_absent_pilots($date, $time))));
 }
 
 /**

@@ -98,10 +98,12 @@ function fvr_install(): void
   title varchar(190) NOT NULL,
   note text NOT NULL,
   blocks int(11) NOT NULL DEFAULT 0,
+  pilot_id bigint(20) unsigned DEFAULT NULL,
   created_at datetime NOT NULL,
   updated_at datetime NOT NULL,
   PRIMARY KEY  (id),
-  KEY date (date)
+  KEY date (date),
+  KEY pilot_id (pilot_id)
 ) $charset;");
 
     // Données de départ, uniquement lors de la première installation

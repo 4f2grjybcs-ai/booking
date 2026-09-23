@@ -24,7 +24,7 @@ function fvr_events_between(string $from, string $to): array
         return [
             'id' => (int) $e['id'], 'date' => $e['date'], 'all_day' => (int) $e['all_day'],
             'start' => $e['start_time'], 'end' => $e['end_time'], 'title' => $e['title'],
-            'note' => $e['note'], 'blocks' => (int) $e['blocks'],
+            'note' => $e['note'], 'blocks' => (int) $e['blocks'], 'pilot_id' => (int) ($e['pilot_id'] ?? 0),
         ];
     }, $rows ?: []);
 }
@@ -71,6 +71,7 @@ function fvr_save_event(array $p, int $id = 0)
     $data = [
         'date' => $p['date'], 'all_day' => $allDay, 'start_time' => $start, 'end_time' => $end, 'title' => $title,
         'note' => sanitize_textarea_field($p['note'] ?? ''), 'blocks' => max(0, (int) ($p['blocks'] ?? 0)),
+        'pilot_id' => ((int) ($p['pilot_id'] ?? 0)) ?: null,
         'updated_at' => fvr_now(),
     ];
     if ($id) {
@@ -101,6 +102,117 @@ add_action('rest_api_init', function () {
             global $wpdb;
             $wpdb->delete(fvr_table('events'), ['id' => (int) $req['id']]);
             return ['ok' => true];
+        },
+    ]);
+});
+
+// ---------- Absences déclarées par les pilotes ----------
+
+// Pilotes absents sur un créneau (date + heure de début d'un vol)
+function fvr_absent_pilots(string $date, string $time): array
+{
+    $out = [];
+    $start = fvr_minutes($time);
+    $end = $start + FVR_SLOT_MINUTES;
+    foreach (fvr_events_between($date, $date) as $e) {
+        if ($e['pilot_id'] && ($e['all_day'] || (fvr_minutes($e['start']) < $end && fvr_minutes($e['end']) > $start))) {
+            $out[] = $e['pilot_id'];
+        }
+    }
+    return $out;
+}
+
+// Vols auxquels le pilote est attribué pendant une absence
+function fvr_absence_conflicts(int $pilotId, array $days, bool $allDay, string $start, string $end): array
+{
+    global $wpdb;
+    if (!$days) {
+        return [];
+    }
+    $rows = $wpdb->get_results($wpdb->prepare('SELECT b.* FROM ' . fvr_table('bookings') . ' b JOIN ' . fvr_table('assign')
+        . " a ON a.booking_id = b.id WHERE a.pilot_id = %d AND b.status <> 'cancelled' AND b.date BETWEEN %s AND %s ORDER BY b.date, b.time",
+        $pilotId, min($days), max($days)), ARRAY_A);
+    return array_values(array_filter($rows, function ($b) use ($days, $allDay, $start, $end) {
+        if (!in_array($b['date'], $days, true)) {
+            return false;
+        }
+        $s = fvr_minutes($b['time']);
+        return $allDay || (fvr_minutes($start) < $s + FVR_SLOT_MINUTES && fvr_minutes($end) > $s);
+    }));
+}
+
+function fvr_pilot_from_request(WP_REST_Request $req): ?array
+{
+    $ctx = fvr_token_context($req->get_param('token'));
+    return $ctx['pilot'] ?? null;
+}
+
+add_action('rest_api_init', function () {
+    register_rest_route('fvr/v1', '/pilot/absence', [
+        'methods'             => 'POST',
+        'permission_callback' => function (WP_REST_Request $req) { return fvr_pilot_from_request($req) !== null; },
+        'callback'            => function (WP_REST_Request $req) {
+            $pilot = fvr_pilot_from_request($req);
+            $p = (array) ($req->get_json_params() ?: $req->get_body_params());
+            $from = (string) ($p['date'] ?? '');
+            $to = (string) ($p['to'] ?? '') ?: $from;
+            if (!fvr_valid_date($from) || !fvr_valid_date($to) || $to < $from) {
+                return new WP_Error('invalid', 'Dates invalides.', ['status' => 422]);
+            }
+            if ($from < fvr_today()) {
+                return new WP_Error('invalid', 'Impossible de déclarer une absence dans le passé.', ['status' => 422]);
+            }
+            $days = [];
+            for ($d = $from; $d <= $to && count($days) < 92; $d = gmdate('Y-m-d', strtotime($d . ' 12:00:00 +1 day'))) {
+                $days[] = $d;
+            }
+            if ($to > end($days)) {
+                return new WP_Error('invalid', 'Absence limitée à 3 mois à la fois.', ['status' => 422]);
+            }
+            $allDay = !empty($p['all_day']) && $p['all_day'] !== '0';
+            $note = sanitize_textarea_field($p['note'] ?? '');
+            $ids = [];
+            foreach ($days as $d) {
+                $saved = fvr_save_event([
+                    'date' => $d, 'all_day' => $allDay ? 1 : 0, 'start' => $p['start'] ?? '', 'end' => $p['end'] ?? '',
+                    'title' => 'Absence · ' . $pilot['name'], 'note' => $note, 'blocks' => 1, 'pilot_id' => $pilot['id'],
+                ]);
+                if (is_wp_error($saved)) {
+                    return $saved;
+                }
+                $ids[] = $saved;
+            }
+            $conflicts = fvr_absence_conflicts($pilot['id'], $days, $allDay, (string) ($p['start'] ?? ''), (string) ($p['end'] ?? ''));
+
+            // Prévient l'administrateur
+            $admin = fvr_settings()['admin_email'];
+            if ($admin) {
+                $when = ($from === $to ? fvr_format_date($from) : 'du ' . fvr_format_date($from) . ' au ' . fvr_format_date($to))
+                    . ($allDay ? ' (journée entière)' : ' de ' . $p['start'] . ' à ' . $p['end']);
+                $body = $pilot['name'] . " a déclaré une absence $when." . ($note ? "\nMotif : $note" : '');
+                if ($conflicts) {
+                    $body .= "\n\nATTENTION, " . $pilot['name'] . " est attribué à ces vols :\n" . implode("\n", array_map(function ($b) {
+                        return '- ' . fvr_format_date($b['date']) . ' à ' . $b['time'] . ' : ' . $b['name'] . ' (' . $b['passengers'] . ' pax)';
+                    }, $conflicts));
+                }
+                $body .= "\n\nAgenda : " . fvr_admin_planning_url();
+                wp_mail($admin, '[' . wp_specialchars_decode(get_bloginfo('name'), ENT_QUOTES) . '] Absence de ' . $pilot['name'], $body);
+            }
+            return ['ok' => true, 'ids' => $ids, 'conflicts' => array_map(function ($b) {
+                return ['date' => $b['date'], 'time' => $b['time'], 'name' => $b['name'], 'passengers' => (int) $b['passengers']];
+            }, $conflicts)];
+        },
+    ]);
+
+    register_rest_route('fvr/v1', '/pilot/absence/(?P<id>\d+)', [
+        'methods'             => 'DELETE',
+        'permission_callback' => function (WP_REST_Request $req) { return fvr_pilot_from_request($req) !== null; },
+        'callback'            => function (WP_REST_Request $req) {
+            global $wpdb;
+            $pilot = fvr_pilot_from_request($req);
+            // Un pilote ne peut supprimer que ses propres absences
+            $n = $wpdb->delete(fvr_table('events'), ['id' => (int) $req['id'], 'pilot_id' => $pilot['id']]);
+            return $n ? ['ok' => true] : new WP_Error('forbidden', 'Absence introuvable.', ['status' => 404]);
         },
     ]);
 });

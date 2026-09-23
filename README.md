@@ -10,6 +10,14 @@ Le dossier `wordpress/flyverbier-reservation/` est une extension WordPress.
 4. Créer une page « Réserver » contenant le shortcode `[reservation_parapente]`.
 5. Vérifier **Réglages → Général → Fuseau horaire** = Zurich.
 
+### Absences des pilotes (v1.8)
+
+- Bouton **« Absence »** dans l'agenda personnel de chaque pilote : du … au …, journée entière ou horaires, motif.
+- Effets : 1 place par créneau retirée de la réservation en ligne, le pilote n'est plus attribué automatiquement,
+  e-mail à l'administrateur (avec les vols déjà attribués pendant l'absence).
+- Le pilote peut supprimer ses propres absences ; l'administrateur voit et modifie toutes les absences
+  (fiche Événement, champ « Absence de … »).
+
 ### Date limite des créneaux (v1.7)
 
 - **Réservations → Paramètres → Période de réservation en ligne** : date de fin (raccourcis « fin de ce mois »,

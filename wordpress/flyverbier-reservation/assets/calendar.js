@@ -51,6 +51,7 @@
   }
 
   var mq = window.matchMedia('(max-width: 760px)');
+  var isPilot = !!C.me && !C.canEdit; // lien personnel d'un pilote
   var state = {
     view: store('view') || (mq.matches ? (C.canEdit ? 'list' : 'day') : 'week'),
     mine: !!C.me && store('mine') !== '0',
@@ -309,7 +310,8 @@
     root.innerHTML = topbar() +
       '<div class="g-main">' + sidebar() +
       '<div class="g-content' + (state.anim ? ' g-anim-' + state.anim : '') + '">' + filterBar() + content() + '</div></div>' +
-      (C.canEdit ? '<button type="button" class="g-fab" data-create aria-label="Créer">' + icon('plus') + '</button>' : '');
+      (C.canEdit ? '<button type="button" class="g-fab" data-create aria-label="Créer">' + icon('plus') + '</button>' : '') +
+      (isPilot ? '<button type="button" class="g-fab g-fab-abs" data-absence>' + icon('block') + '<span>Absence</span></button>' : '');
 
     state.anim = '';
     var nb = root.querySelector('.g-body');
@@ -367,6 +369,7 @@
   function sidebar() {
     return '<aside class="g-side">' +
       (C.canEdit ? '<button type="button" class="g-create" data-create>' + icon('plus') + '<span>Créer</span></button>' : '') +
+      (isPilot ? '<button type="button" class="g-create" data-absence>' + icon('block') + '<span>Déclarer une absence</span></button>' : '') +
       miniMonth() +
       '<div class="g-legend"><h3>Statuts</h3>' + Object.keys(C.statuses).map(function (k) {
         return '<div><span class="g-dot st-' + k + '"></span>' + esc(C.statuses[k]) + '</div>';
@@ -535,7 +538,7 @@
         pos = ' style="top:' + top + 'px;height:' + height + 'px;left:calc((100% - ' + R + ') * ' + (it.col * w) + ' + 1px);width:calc((100% - ' + R + ') * ' + w + ' - 4px)"';
         if (it.kind === 'e') {
           var e = it.ev;
-          h += '<div class="g-evt" data-event="' + e.id + '" tabindex="0" role="button"' + pos + '>' +
+          h += '<div class="g-evt' + (e.pilot_id ? ' abs' : '') + (C.me && e.pilot_id === C.me.id ? ' mine' : '') + '" data-event="' + e.id + '" tabindex="0" role="button"' + pos + '>' +
             '<b>⛔ ' + esc(e.title) + '</b><span>' + esc(eventTime(e)) + ' · ' + blocksLabel(e) + '</span></div>';
           return;
         }
@@ -760,7 +763,11 @@
       var t = form.time.value, busy = {};
       if (!dayData) return busy;
       dayData.bookings.forEach(function (x) {
-        if (x.time === t && x.status !== 'cancelled' && x.id !== b.id) (x.pilots || []).forEach(function (id) { if (id) busy[id] = x.name; });
+        if (x.time === t && x.status !== 'cancelled' && x.id !== b.id) (x.pilots || []).forEach(function (id) { if (id) busy[id] = 'en vol avec ' + x.name; });
+      });
+      var s0 = mins(t), e0 = s0 + DURATION;
+      (dayData.events || []).forEach(function (ev) {
+        if (ev.pilot_id && (ev.all_day || (mins(ev.start) < e0 && mins(ev.end) > s0))) busy[ev.pilot_id] = 'absent';
       });
       return busy;
     }
@@ -792,7 +799,7 @@
           pilots.filter(function (p) { return p.active || p.id === sel; }).map(function (p) {
             var other = seats.indexOf(p.id) !== -1 && p.id !== sel;
             return '<option value="' + p.id + '"' + (p.id === sel ? ' selected' : '') + (other ? ' disabled' : '') + '>' + esc(p.name) +
-              (p.rank ? ' (n°' + p.rank + ')' : '') + (busy[p.id] ? ' · en vol avec ' + esc(busy[p.id]) : '') + '</option>';
+              (p.rank ? ' (n°' + p.rank + ')' : '') + (busy[p.id] ? ' · ' + esc(busy[p.id]) : '') + '</option>';
           }).join('') + '</select></label>';
       }).join('');
     }
@@ -929,7 +936,77 @@
 
   function openEvent(ev) {
     if (!ev) return;
-    if (C.canEdit) editEvent(Object.assign({}, ev)); else showEvent(ev);
+    if (C.canEdit) editEvent(Object.assign({}, ev));
+    else if (isPilot && ev.pilot_id === C.me.id) showMyAbsence(ev);
+    else showEvent(ev);
+  }
+
+  // ---------- Absences (lien personnel d'un pilote) ----------
+  function showMyAbsence(ev) {
+    var bg = openSheet('<div class="g-sheet-bar"><button type="button" class="g-icon-btn" data-close aria-label="Fermer">' + icon('close') + '</button></div>' +
+      '<div class="g-sheet-body g-details"><div class="g-dtitle"><span class="g-square g-square-abs"></span><div><h2>Ton absence</h2>' +
+      '<p>' + esc(longDate(ev.date)) + ' · ' + esc(eventTime(ev)) + '</p></div></div>' +
+      row('note', esc(ev.note)) +
+      '<p class="g-error" hidden></p>' +
+      '<button type="button" class="g-delete" data-del-abs>' + icon('trash') + 'Supprimer cette absence</button></div>', 'g-sheet-details');
+    bg.querySelector('[data-del-abs]').addEventListener('click', function () {
+      if (!confirm('Supprimer ton absence du ' + longDate(ev.date) + ' ?')) return;
+      api('pilot/absence/' + ev.id, null, { method: 'DELETE' }).then(function () {
+        closeSheet(true); delete db.events[ev.id]; rebuild(); render();
+        toast('Absence supprimée');
+        refreshDays([ev.date]);
+      }).catch(function (err) { var e = bg.querySelector('.g-error'); e.textContent = err.message; e.hidden = false; });
+    });
+  }
+
+  function declareAbsence(date) {
+    date = date && date >= C.today ? date : (state.anchor >= C.today ? state.anchor : C.today);
+    var bg = openSheet(
+      '<form class="g-form" novalidate>' +
+      '<div class="g-sheet-bar"><button type="button" class="g-icon-btn" data-close aria-label="Fermer">' + icon('close') + '</button>' +
+      '<span class="g-sheet-title">Déclarer une absence</span>' +
+      '<button type="submit" class="g-save">Enregistrer</button></div>' +
+      '<div class="g-sheet-body">' +
+      '<p class="g-abs-intro">' + icon('block') + '<span>Tu ne seras plus proposé sur des vols pendant ton absence, et l\'administrateur est prévenu automatiquement.</span></p>' +
+      '<div class="g-frow">' + icon('cal') + '<div class="g-fcol g-inline"><label class="g-lbl">Du<input type="date" name="date" min="' + C.today + '" value="' + date + '" required></label>' +
+      '<label class="g-lbl">Au<input type="date" name="to" min="' + C.today + '" value="' + date + '" required></label></div></div>' +
+      '<div class="g-frow">' + icon('clock') + '<div class="g-fcol">' +
+      '<label class="g-switch"><input type="checkbox" name="all_day" checked><span>Toute la journée</span></label>' +
+      '<div class="g-inline g-times" hidden><select name="start" class="g-timesel">' + timeOptions('08:00') + '</select>' +
+      '<span class="g-muted">à</span><select name="end" class="g-timesel">' + timeOptions('12:00') + '</select></div></div></div>' +
+      '<div class="g-frow">' + icon('note') + '<div class="g-fcol"><textarea name="note" rows="2" placeholder="Motif (facultatif)"></textarea></div></div>' +
+      '<p class="g-error" hidden></p></div></form>', 'g-sheet-edit g-sheet-abs');
+    var form = bg.querySelector('form'), errEl = form.querySelector('.g-error');
+    form.addEventListener('change', function (e) {
+      if (state.sheet) state.sheet.dirty = true;
+      form.querySelector('.g-times').hidden = form.all_day.checked;
+      if (e.target.name === 'date' && form.to.value < form.date.value) form.to.value = form.date.value;
+      if (e.target.name === 'start' && form.end.value <= form.start.value) form.end.value = hhmm(Math.min(18 * 60, mins(form.start.value) + 60));
+    });
+    form.addEventListener('submit', function (e) {
+      e.preventDefault();
+      errEl.hidden = true;
+      var payload = { date: form.date.value, to: form.to.value || form.date.value, all_day: form.all_day.checked ? 1 : 0,
+        start: form.start.value, end: form.end.value, note: form.note.value };
+      if (!payload.date) { errEl.textContent = 'Choisis une date.'; errEl.hidden = false; return; }
+      if (payload.to < payload.date) { errEl.textContent = 'La date de fin doit être après la date de début.'; errEl.hidden = false; return; }
+      if (!payload.all_day && payload.end <= payload.start) { errEl.textContent = "L'heure de fin doit être après l'heure de début."; errEl.hidden = false; return; }
+      var btn = form.querySelector('.g-save');
+      btn.disabled = true; btn.textContent = 'Envoi…';
+      api('pilot/absence', null, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }).then(function (res) {
+        closeSheet(true);
+        refreshDays([payload.date, payload.to]);
+        if (res.conflicts && res.conflicts.length) {
+          openSheet('<div class="g-sheet-bar"><button type="button" class="g-icon-btn" data-close aria-label="Fermer">' + icon('close') + '</button>' +
+            '<span class="g-sheet-title">Absence enregistrée</span></div><div class="g-sheet-body"><div class="g-kept"><b>Attention, tu es prévu sur ' +
+            (res.conflicts.length > 1 ? 'ces vols' : 'ce vol') + ' :</b>' + res.conflicts.map(function (c) {
+              return '<span>' + esc(longDate(c.date)) + ' à ' + esc(c.time) + ' · ' + esc(c.name) + ' (' + c.passengers + ' pax)</span>';
+            }).join('') + '<small>L\'administrateur a été prévenu et va te remplacer.</small></div></div>', 'g-sheet-details');
+        } else {
+          toast('Absence enregistrée — l\'administrateur est prévenu');
+        }
+      }).catch(function (err) { errEl.textContent = err.message; errEl.hidden = false; btn.disabled = false; btn.textContent = 'Enregistrer'; });
+    });
   }
 
   var PRESETS = ['Météo', 'Compétition', 'Pilote absent', 'Groupe privé', 'Fermeture'];
@@ -955,6 +1032,10 @@
       '<div class="g-inline g-blockcount"' + (ev.blocks > 0 ? '' : ' hidden') + '><div class="g-stepper"><button type="button" data-bstep="-1" aria-label="Moins">−</button>' +
       '<input type="number" name="blocks" min="1" max="30" value="' + (ev.blocks > 0 ? ev.blocks : 1) + '" inputmode="numeric">' +
       '<button type="button" data-bstep="1" aria-label="Plus">+</button></div><span class="g-muted">place(s) par créneau (ex. pilotes absents)</span></div></div></div>' +
+      ((state.data.pilots || []).length ? '<div class="g-frow">' + icon('pilot') + '<div class="g-fcol"><select name="pilot_id"><option value="0">— Aucun pilote (événement général)</option>' +
+        state.data.pilots.map(function (p) {
+          return '<option value="' + p.id + '"' + (p.id === ev.pilot_id ? ' selected' : '') + '>Absence de ' + esc(p.name) + '</option>';
+        }).join('') + '</select></div></div>' : '') +
       '<div class="g-frow">' + icon('note') + '<div class="g-fcol"><textarea name="note" rows="2" placeholder="Note (visible par les pilotes)">' + esc(ev.note) + '</textarea></div></div>' +
       '<div class="g-impact"></div>' +
       '<p class="g-error" hidden></p>' +
@@ -967,7 +1048,8 @@
       var some = form.querySelector('input[name=mode]:checked').value === 'some';
       return {
         id: ev.id || 0, title: form.title.value.trim(), date: form.date.value, all_day: form.all_day.checked ? 1 : 0,
-        start: form.start.value, end: form.end.value, note: form.note.value, blocks: some ? Math.max(1, parseInt(form.blocks.value, 10) || 1) : 0
+        start: form.start.value, end: form.end.value, note: form.note.value, blocks: some ? Math.max(1, parseInt(form.blocks.value, 10) || 1) : 0,
+        pilot_id: form.pilot_id ? +form.pilot_id.value : (ev.pilot_id || 0)
       };
     }
     // Aperçu : créneaux concernés et réservations maintenues
@@ -1116,6 +1198,7 @@
     if (t.closest('[data-search]')) return openSearch();
     if (t.closest('[data-new]')) return newBooking();
     if (t.closest('[data-create]')) return openCreate();
+    if (t.closest('[data-absence]')) return declareAbsence(state.view === 'day' || state.view === 'four' ? state.anchor : C.today);
     if ((el = t.closest('[data-free-time]'))) return newBooking(el.getAttribute('data-free-date'), el.getAttribute('data-free-time'));
     if ((el = t.closest('[data-event]'))) return openEvent(findEvent(+el.getAttribute('data-event')));
     if (t.closest('[data-list-more]')) { state.anchor = addDays(state.anchor, 30); return load(); }

@@ -453,3 +453,20 @@ body.fvr-cal-page .g-app { height: 100vh; height: 100dvh; }
   .g-four .g-ghost.side { width: 26px !important; }
   .g-four .g-ghost.side b { font-size: 12px; }
 }
+
+/* ---------- Absences des pilotes ---------- */
+.g-evt.abs { background: repeating-linear-gradient(135deg, #f3e8fd 0 6px, #e9d7fb 6px 12px); border-color: #a142f4; color: #4a148c; }
+.g-evt.abs span { color: #6a1b9a; }
+.g-evt.abs.mine { box-shadow: 0 0 0 2px #fff, 0 0 0 4px #a142f4; }
+.g-square-abs { background: repeating-linear-gradient(135deg, #a142f4 0 3px, #e9d7fb 3px 6px); }
+.read-only .g-evt.abs.mine { cursor: pointer; }
+.g-fab-abs { display: inline-flex !important; width: auto; padding: 0 18px 0 14px; gap: 8px; color: #6a1b9a; font-weight: 600; font-size: 15px; }
+.g-fab-abs .g-ic { width: 22px; height: 22px; }
+.g-abs-intro { display: flex; gap: 12px; align-items: flex-start; background: #f3e8fd; color: #4a148c; border-radius: 10px; padding: 10px 12px; margin: 4px 0 12px; font-size: 13px; }
+.g-abs-intro .g-ic { color: #a142f4; }
+.g-lbl { display: flex; flex-direction: column; gap: 2px; font-size: 12px; color: var(--g-muted); flex: 1 1 140px; }
+.g-sheet-abs { max-width: 480px; }
+.g-kept span { display: block; }
+@media (min-width: 761px) { .g-fab-abs { display: none !important; } }
+.g-form .g-lbl input { flex: none !important; width: 100% !important; }
+.fvr-cal .g-fab-abs { color: #6a1b9a; }

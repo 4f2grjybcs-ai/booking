@@ -33,6 +33,7 @@
     chevron: '<path d="M7 10l5 5 5-5"/>',
     more: '<circle cx="12" cy="5.5" r="1.3"/><circle cx="12" cy="12" r="1.3"/><circle cx="12" cy="18.5" r="1.3"/>',
     pilot: '<circle cx="12" cy="7.5" r="3.5"/><path d="M5 20c.8-4 3.6-6 7-6s6.2 2 7 6"/>',
+    block: '<circle cx="12" cy="12" r="8.5"/><path d="M6 6l12 12"/>',
     cal: '<rect x="3.5" y="5" width="17" height="15" rx="2"/><path d="M3.5 10h17M8 3v4M16 3v4"/>',
     sms: '<path d="M4 5h16v11H9l-5 4z"/><path d="M8 10.5h.01M12 10.5h.01M16 10.5h.01"/>',
     wa: '<path d="M4 20l1.3-4A8 8 0 1 1 8 18.7z"/><path d="M9 9.5c.3 2.3 2.2 4.2 4.5 4.5l1-1.2 2 .8-.3 1.6c-3.6.4-7.4-3.4-7-7L10.8 8l.8 2z"/>'
@@ -135,31 +136,118 @@
     });
   }
 
-  function toast(msg) {
+  function toast(msg, actionLabel, action) {
+    document.querySelectorAll('.g-toast').forEach(function (x) { x.parentNode.removeChild(x); });
     var t = document.createElement('div');
     t.className = 'g-toast';
     t.textContent = msg;
+    if (actionLabel) {
+      var btn = document.createElement('button');
+      btn.type = 'button';
+      btn.textContent = actionLabel;
+      btn.addEventListener('click', function () { t.parentNode && t.parentNode.removeChild(t); action(); });
+      t.appendChild(btn);
+    }
     document.body.appendChild(t);
-    setTimeout(function () { t.classList.add('out'); }, 2600);
-    setTimeout(function () { if (t.parentNode) t.parentNode.removeChild(t); }, 3000);
+    var life = actionLabel ? 6000 : 2600;
+    setTimeout(function () { t.classList.add('out'); }, life);
+    setTimeout(function () { if (t.parentNode) t.parentNode.removeChild(t); }, life + 400);
   }
 
-  // ---------- Données ----------
-  function load() {
-    var r = range();
+  // ---------- Données : cache par jour, affichage immédiat, mise à jour en arrière-plan ----------
+  var db = { days: {}, bookings: {}, events: {}, blocked: {}, slots: [], pilots: [], flights: [] };
+  var inflight = {};
+  var loadingCount = 0;
+
+  function values(o) { return Object.keys(o).map(function (k) { return o[k]; }); }
+  function rebuild() {
+    state.data = {
+      bookings: values(db.bookings), events: values(db.events),
+      blocked: Object.keys(db.blocked).map(function (d) { return { date: d, reason: db.blocked[d] }; }),
+      slots: db.slots, pilots: db.pilots, flights: db.flights
+    };
+  }
+  function merge(data) {
+    for (var d = data.from; d <= data.to; d = addDays(d, 1)) { db.days[d] = true; delete db.blocked[d]; }
+    [db.bookings, db.events].forEach(function (coll) {
+      Object.keys(coll).forEach(function (k) { if (coll[k].date >= data.from && coll[k].date <= data.to) delete coll[k]; });
+    });
+    data.bookings.forEach(function (b) { db.bookings[b.id] = b; });
+    (data.events || []).forEach(function (e) { db.events[e.id] = e; });
+    data.blocked.forEach(function (x) { db.blocked[x.date] = x.reason || 'Fermé'; });
+    db.slots = data.slots;
+    db.pilots = data.pilots || [];
+    if (data.flights) db.flights = data.flights;
+    rebuild();
+  }
+  function neededRange() {
+    var r = range(), from = r[0], to = r[1];
     // Le mini-calendrier affiche le mois : on charge aussi ce mois pour ses indicateurs
-    var from = r[0], to = r[1];
     if (state.sidebar) {
       var g = monthGrid(state.anchor);
       if (g[0] < from) from = g[0];
       if (g[1] > to) to = g[1];
     }
-    return api('calendar', { from: from, to: to }).then(function (data) {
-      state.data = data;
-      render();
-    }).catch(function (err) {
-      root.innerHTML = '<p class="g-error">Impossible de charger l\'agenda : ' + esc(err.message) + '</p>';
+    return [from, to];
+  }
+  function covered(from, to) {
+    for (var d = from; d <= to; d = addDays(d, 1)) if (!db.days[d]) return false;
+    return true;
+  }
+  function setLoading(delta) {
+    loadingCount = Math.max(0, loadingCount + delta);
+    root.classList.toggle('is-loading', loadingCount > 0);
+  }
+  function fetchRange(from, to, silent) {
+    var key = from + '|' + to;
+    if (inflight[key]) return inflight[key];
+    if (!silent) setLoading(1);
+    inflight[key] = api('calendar', { from: from, to: to }).then(function (data) {
+      var before = state.data ? JSON.stringify(sliceOf(from, to)) : null;
+      merge(data);
+      // Ne redessine que si la période affichée a réellement changé
+      var r = neededRange();
+      if (!(to < r[0] || from > r[1]) && JSON.stringify(sliceOf(from, to)) !== before) render();
+      return data;
+    }).finally(function () {
+      delete inflight[key];
+      if (!silent) setLoading(-1);
     });
+    return inflight[key];
+  }
+  function sliceOf(from, to) {
+    var inR = function (x) { return x.date >= from && x.date <= to; };
+    return [state.data.bookings.filter(inR), state.data.events.filter(inR), state.data.blocked.filter(inR), state.data.slots, state.data.pilots];
+  }
+  function prefetch() {
+    // Précharge la période précédente et suivante pour une navigation instantanée
+    [-1, 1].forEach(function (n) {
+      var saved = state.anchor;
+      state.anchor = shiftedAnchor(n);
+      var r = neededRange();
+      state.anchor = saved;
+      if (!covered(r[0], r[1])) fetchRange(r[0], r[1], true).catch(function () {});
+    });
+  }
+  function load() {
+    var r = neededRange();
+    if (state.data && covered(r[0], r[1])) {
+      render();
+      fetchRange(r[0], r[1], true).catch(function () {});
+      prefetch();
+      return Promise.resolve();
+    }
+    if (state.data) render(); // affiche déjà la nouvelle période (vide) avec la barre de chargement
+    return fetchRange(r[0], r[1], false).then(function () { render(); prefetch(); }).catch(function (err) {
+      if (!state.data) root.innerHTML = '<p class="g-error">Impossible de charger l\'agenda : ' + esc(err.message) + '</p>';
+      else toast('Connexion impossible : ' + err.message);
+    });
+  }
+  // Recharge silencieusement des jours précis (après une modification)
+  function refreshDays(dates) {
+    dates = dates.filter(Boolean).sort();
+    if (!dates.length) return Promise.resolve();
+    return fetchRange(dates[0], dates[dates.length - 1], true).then(function () { render(); });
   }
 
   function isMine(b) { return !!C.me && (b.pilots || []).indexOf(C.me.id) !== -1; }
@@ -214,12 +302,14 @@
     var body = root.querySelector('.g-body');
     if (body) scrollTop = body.scrollTop;
 
-    root.className = 'fvr-cal g-app' + (state.sidebar ? ' with-sidebar' : '') + (C.canEdit ? ' can-edit' : ' read-only');
+    root.className = 'fvr-cal g-app' + (state.sidebar ? ' with-sidebar' : '') + (C.canEdit ? ' can-edit' : ' read-only') +
+      (loadingCount > 0 ? ' is-loading' : '');
     root.innerHTML = topbar() +
       '<div class="g-main">' + sidebar() +
-      '<div class="g-content">' + filterBar() + content() + '</div></div>' +
-      (C.canEdit ? '<button type="button" class="g-fab" data-new aria-label="Nouvelle réservation">' + icon('plus') + '</button>' : '');
+      '<div class="g-content' + (state.anim ? ' g-anim-' + state.anim : '') + '">' + filterBar() + content() + '</div></div>' +
+      (C.canEdit ? '<button type="button" class="g-fab" data-create aria-label="Créer">' + icon('plus') + '</button>' : '');
 
+    state.anim = '';
     var nb = root.querySelector('.g-body');
     if (nb) {
       // Aligne les en-têtes de jours avec la grille quand une barre de défilement est visible
@@ -249,7 +339,7 @@
 
   function topbar() {
     if (compactDay()) {
-      return '<header class="g-top g-top-day">' +
+      return '<header class="g-top g-top-day"><div class="g-progress"></div>' +
         '<button type="button" class="g-icon-btn" data-nav="-1" aria-label="Jour précédent">' + icon('prev') + '</button>' +
         '<label class="g-datepick' + (state.anchor === C.today ? ' is-today' : '') + '"><span>' + esc(title()) + '</span>' +
         '<input type="date" data-datepick value="' + esc(state.anchor) + '" aria-label="Choisir une date"></label>' +
@@ -259,7 +349,7 @@
         (C.canEdit ? '<button type="button" class="g-icon-btn" data-search aria-label="Rechercher">' + icon('search') + '</button>' : '') +
         viewMenu(true) + '</header>';
     }
-    return '<header class="g-top">' +
+    return '<header class="g-top"><div class="g-progress"></div>' +
       '<button type="button" class="g-icon-btn" data-toggle-sidebar aria-label="Menu">' + icon('menu') + '</button>' +
       '<div class="g-brand">' + icon('cal', 'g-brand-ic') + '<span>' + esc(C.site || 'Planning') + '</span></div>' +
       '<button type="button" class="g-today" data-nav="0" aria-label="Aujourd\'hui"><span class="g-today-full">Aujourd\'hui</span><span class="g-today-short">' + toDate(C.today).getDate() + '</span></button>' +
@@ -274,7 +364,7 @@
 
   function sidebar() {
     return '<aside class="g-side">' +
-      (C.canEdit ? '<button type="button" class="g-create" data-new>' + icon('plus') + '<span>Créer</span></button>' : '') +
+      (C.canEdit ? '<button type="button" class="g-create" data-create>' + icon('plus') + '<span>Créer</span></button>' : '') +
       miniMonth() +
       '<div class="g-legend"><h3>Statuts</h3>' + Object.keys(C.statuses).map(function (k) {
         return '<div><span class="g-dot st-' + k + '"></span>' + esc(C.statuses[k]) + '</div>';
@@ -318,10 +408,45 @@
   function hourHeight() { return state.view === 'day' ? 64 : 52; }
 
   // ---------- Vue jour / semaine : grille horaire ----------
-  function layout(list) {
-    // Répartit en colonnes les réservations qui se chevauchent (comme Google Agenda)
-    var evs = list.map(function (b) { return { b: b, s: mins(b.time), e: mins(b.time) + DURATION }; })
-      .sort(function (x, y) { return x.s - y.s || y.b.passengers - x.b.passengers; });
+  // ---------- Événements et places libres ----------
+  function eventsOn(ds, date) {
+    return (ds.events || []).filter(function (e) { return e.date === date; })
+      .sort(function (a, b) { return b.all_day - a.all_day || (a.start < b.start ? -1 : a.start > b.start ? 1 : 0); });
+  }
+  // Places bloquées par les événements sur un créneau (Infinity = tout est bloqué)
+  function eventBlocked(ds, date, time) {
+    var s = mins(time), e = s + DURATION, total = 0, evs = eventsOn(ds, date);
+    for (var i = 0; i < evs.length; i++) {
+      var ev = evs[i];
+      if (!ev.all_day && !(mins(ev.start) < e && mins(ev.end) > s)) continue;
+      if (ev.blocks <= 0) return Infinity;
+      total += ev.blocks;
+    }
+    return total;
+  }
+  function slotFree(ds, date, time, cap, excludeId) {
+    var taken = ds.bookings.reduce(function (n, x) {
+      return n + (x.date === date && x.time === time && x.status !== 'cancelled' && x.id !== excludeId ? x.passengers : 0);
+    }, 0);
+    var blocked = eventBlocked(ds, date, time);
+    return { taken: taken, blocked: blocked, free: blocked === Infinity ? 0 : Math.max(0, cap - taken - blocked) };
+  }
+  function isFuture(date, time) { return date > C.today || (date === C.today && mins(time) > nowMinutes()); }
+  // Créneaux encore réservables d'un jour : [{time, free}]
+  function freeSlots(date) {
+    if (blockedMap()[date]) return [];
+    return activeSlots().filter(function (s) { return isFuture(date, s.time); }).map(function (s) {
+      return { time: s.time, free: slotFree(state.data, date, s.time, s.capacity).free };
+    }).filter(function (x) { return x.free > 0; });
+  }
+  function blocksLabel(ev) { return ev.blocks > 0 ? ev.blocks + ' place' + (ev.blocks > 1 ? 's' : '') + ' bloquée' + (ev.blocks > 1 ? 's' : '') : 'toutes les places bloquées'; }
+  function eventTime(ev) { return ev.all_day ? 'Toute la journée' : ev.start + ' – ' + ev.end; }
+  function findEvent(id) { return state.data.events.filter(function (e) { return e.id === id; })[0]; }
+
+  // ---------- Vue jour / semaine : grille horaire ----------
+  function layout(items) {
+    // Répartit en colonnes les éléments qui se chevauchent (comme Google Agenda)
+    var evs = items.slice().sort(function (x, y) { return x.s - y.s || x.order - y.order; });
     var clusters = [], cur = null;
     evs.forEach(function (ev) {
       if (!cur || ev.s >= cur.end) { cur = { items: [], end: 0, cols: [] }; clusters.push(cur); }
@@ -349,25 +474,66 @@
         (blocked[d] ? '<span class="g-closed">' + esc(blocked[d]) + '</span>' : pax ? '<span class="g-daypax">' + pax + ' pax</span>' : '<span class="g-daypax">&nbsp;</span>') +
         '</div>';
     });
-    h += '</div><div class="g-body"><div class="g-body-in" style="height:' + ((hr[1] - hr[0]) * H) + 'px">';
+    h += '</div>';
+    // Événements « toute la journée »
+    var allDay = days.map(function (d) { return eventsOn(state.data, d).filter(function (e) { return e.all_day; }); });
+    if (allDay.some(function (l) { return l.length; })) {
+      h += '<div class="g-allday"><div class="g-gutter"></div>' + allDay.map(function (l) {
+        return '<div class="g-allday-cell">' + l.map(function (e) {
+          return '<div class="g-evt-chip" data-event="' + e.id + '" tabindex="0" role="button" title="' + esc(e.title + ' – ' + blocksLabel(e)) + '">⛔ ' + esc(e.title) + '</div>';
+        }).join('') + '</div>';
+      }).join('') + '</div>';
+    }
+    h += '<div class="g-body"><div class="g-body-in" style="height:' + ((hr[1] - hr[0]) * H) + 'px">';
     h += '<div class="g-gutter">';
     for (var i = hr[0]; i < hr[1]; i++) h += '<span' + (i === hr[0] ? ' class="first"' : '') + ' style="top:' + ((i - hr[0]) * H) + 'px">' + pad(i) + ':00</span>';
     h += '</div><div class="g-cols">';
     days.forEach(function (d) {
       var list = per[d] || [];
       h += '<div class="g-col' + (blocked[d] ? ' blocked' : '') + (d < C.today ? ' past' : '') + '" data-date="' + d + '">';
-      // Créneaux : repère discret avec places occupées / capacité
-      slots.forEach(function (s) {
-        var top = (mins(s.time) / 60 - hr[0]) * H, pax = paxAt(list, s.time);
-        var cls = pax > s.capacity ? ' over' : pax === s.capacity && pax ? ' full' : '';
-        h += '<div class="g-slot' + cls + '" style="top:' + top + 'px;height:' + (DURATION / 60 * H) + 'px"><span>' + pax + '/' + s.capacity + '</span></div>';
+      var items = list.map(function (b) { return { kind: 'b', b: b, s: mins(b.time), e: mins(b.time) + DURATION, order: 1 - b.passengers / 100 }; });
+      eventsOn(state.data, d).filter(function (e) { return !e.all_day; }).forEach(function (e) {
+        items.push({ kind: 'e', ev: e, s: mins(e.start), e: Math.max(mins(e.end), mins(e.start) + 15), order: 0 });
       });
-      layout(list).forEach(function (ev) {
-        var b = ev.b, top = (ev.s / 60 - hr[0]) * H, height = Math.max(22, DURATION / 60 * H - 3);
-        var w = 100 / ev.n;
+      slots.forEach(function (s) {
+        var st = slotFree(state.data, d, s.time, s.capacity);
+        // Places libres (administrateur) : bloc cliquable pour réserver
+        if (C.canEdit && st.free > 0 && !blocked[d] && isFuture(d, s.time)) {
+          items.push({ kind: 'f', time: s.time, free: st.free, s: mins(s.time), e: mins(s.time) + DURATION, order: 2 });
+        }
+        if (C.canEdit && st.blocked !== Infinity && st.taken > s.capacity) {
+          h += '<div class="g-slot over" style="top:' + ((mins(s.time) / 60 - hr[0]) * H) + 'px;height:' + (DURATION / 60 * H) + 'px"><span>' + st.taken + '/' + s.capacity + '</span></div>';
+        }
+      });
+      // Places libres : colonne entière si le créneau est vide, sinon pastille étroite à droite
+      var main = items.filter(function (it) { return it.kind !== 'f'; });
+      var ghosts = items.filter(function (it) { return it.kind === 'f'; });
+      layout(main);
+      ghosts.forEach(function (g) {
+        g.side = main.some(function (m) { return m.s < g.e && m.e > g.s; });
+        if (g.side) main.forEach(function (m) { if (m.s < g.e && m.e > g.s) m.reserve = true; });
+      });
+      main.concat(ghosts).forEach(function (it) {
+        var top = (it.s / 60 - hr[0]) * H, height = Math.max(22, (it.e - it.s) / 60 * H - 3);
+        var pos;
+        if (it.kind === 'f') {
+          pos = ' style="top:' + top + 'px;height:' + height + 'px;' + (it.side ? 'right:2px;width:34px' : 'left:1px;width:calc(100% - 4px)') + '"';
+          h += '<button type="button" class="g-ghost' + (it.side ? ' side' : '') + '" data-free-date="' + d + '" data-free-time="' + it.time + '"' + pos +
+            ' title="' + it.free + ' place' + (it.free > 1 ? 's' : '') + ' libre' + (it.free > 1 ? 's' : '') + ' à ' + it.time + ' – réserver">' +
+            '<b>+' + (it.side ? '' : ' ') + it.free + '</b>' + (it.side ? '' : '<span>libre' + (it.free > 1 ? 's' : '') + '</span>') + '</button>';
+          return;
+        }
+        var R = it.reserve ? '38px' : '0px', w = 1 / it.n;
+        pos = ' style="top:' + top + 'px;height:' + height + 'px;left:calc((100% - ' + R + ') * ' + (it.col * w) + ' + 1px);width:calc((100% - ' + R + ') * ' + w + ' - 4px)"';
+        if (it.kind === 'e') {
+          var e = it.ev;
+          h += '<div class="g-evt" data-event="' + e.id + '" tabindex="0" role="button"' + pos + '>' +
+            '<b>⛔ ' + esc(e.title) + '</b><span>' + esc(eventTime(e)) + ' · ' + blocksLabel(e) + '</span></div>';
+          return;
+        }
+        var b = it.b;
         h += '<div class="g-ev st-' + esc(b.status) + (height < 40 ? ' short' : '') + (C.me && !isMine(b) ? ' other' : '') + (C.me && isMine(b) ? ' mine' : '') + '" data-id="' + b.id + '"' +
-          (C.canEdit ? ' draggable="true"' : '') + ' tabindex="0" role="button"' +
-          ' style="top:' + top + 'px;height:' + height + 'px;left:calc(' + (ev.col * w) + '% + 1px);width:calc(' + w + '% - 4px)">' +
+          (C.canEdit ? ' draggable="true"' : '') + ' tabindex="0" role="button"' + pos + '>' +
           '<b>' + esc(b.name) + '</b>' +
           '<span>' + esc(b.time) + ' · ' + b.passengers + ' pax' + (b.weights ? ' · ' + esc(b.weights) + ' kg' : '') + '</span>' +
           (pilotLabel(b) ? '<span class="g-ev-pilots">' + icon('pilot') + pilotLabel(b) + '</span>' : '') +
@@ -391,15 +557,22 @@
     }).join('') + '</div><div class="g-month-grid">';
     for (var d = g[0]; d <= g[1]; d = addDays(d, 1)) {
       var dt = toDate(d), list = (per[d] || []).slice().sort(function (a, b) { return a.time < b.time ? -1 : 1; });
+      var evs = eventsOn(state.data, d);
+      var free = C.canEdit ? freeSlots(d).reduce(function (n, x) { return n + x.free; }, 0) : 0;
+      var room = Math.max(1, 3 - evs.length);
       if (dt.getDay() === 1) weeks++;
       h += '<div class="g-mday' + (dt.getMonth() !== m ? ' other' : '') + (blocked[d] ? ' blocked' : '') + '" data-date="' + d + '">' +
         '<button type="button" class="g-mnum' + (d === C.today ? ' today' : '') + '" data-goto="' + d + '" data-to-day>' + dt.getDate() + '</button>' +
         (blocked[d] ? '<span class="g-closed">' + esc(blocked[d]) + '</span>' : '') +
-        list.slice(0, 3).map(function (b) {
+        evs.map(function (e) {
+          return '<div class="g-mevt" data-event="' + e.id + '" tabindex="0" role="button">⛔ ' + (e.all_day ? '' : esc(e.start) + ' ') + esc(e.title) + '</div>';
+        }).join('') +
+        list.slice(0, room).map(function (b) {
           return '<div class="g-mev st-' + esc(b.status) + '" data-id="' + b.id + '" tabindex="0" role="button"><i></i>' +
             '<span class="t">' + esc(b.time) + '</span> <span class="n">' + esc(shortName(b.name)) + '</span> <span class="p">' + b.passengers + '</span></div>';
         }).join('') +
-        (list.length > 3 ? '<button type="button" class="g-more" data-goto="' + d + '" data-to-day>' + (list.length - 3) + ' autre' + (list.length > 4 ? 's' : '') + '</button>' : '') +
+        (list.length > room ? '<button type="button" class="g-more" data-goto="' + d + '" data-to-day>' + (list.length - room) + ' autre' + (list.length - room > 1 ? 's' : '') + '</button>' : '') +
+        (free ? '<span class="g-mfree">' + free + ' libre' + (free > 1 ? 's' : '') + '</span>' : '') +
         '</div>';
     }
     return h.replace('g-month-grid">', 'g-month-grid" style="--weeks:' + weeks + '">') + '</div></div>';
@@ -411,13 +584,18 @@
     var h = '<div class="g-list">';
     for (var d = r[0]; d <= r[1]; d = addDays(d, 1)) {
       var list = (per[d] || []).slice().sort(function (a, b) { return a.time < b.time ? -1 : a.time > b.time ? 1 : a.id - b.id; });
-      if (!list.length && !blocked[d] && d !== C.today) continue;
+      var evs = eventsOn(state.data, d), free = C.canEdit ? freeSlots(d) : [];
+      if (!list.length && !blocked[d] && !evs.length && !free.length && d !== C.today) continue;
       any = true;
       var dt = toDate(d);
       h += '<section class="g-lday' + (d === C.today ? ' today' : '') + '"><button type="button" class="g-ldate" data-goto="' + d + '" data-to-day>' +
         '<b>' + dt.getDate() + '</b><span>' + MONTHS[dt.getMonth()].slice(0, 4) + '., ' + DAYS[dt.getDay()] + '</span></button><div class="g-litems">';
       if (blocked[d]) h += '<div class="g-litem closed">' + (blocked[d] === 'Fermé' ? 'Fermé' : 'Fermé · ' + esc(blocked[d])) + '</div>';
-      if (!list.length && !blocked[d]) h += '<div class="g-litem empty">Aucun vol aujourd\'hui</div>';
+      evs.forEach(function (e) {
+        h += '<div class="g-litem g-levt" data-event="' + e.id + '" tabindex="0" role="button"><span class="g-ltime">' + (e.all_day ? 'Jour' : esc(e.start)) + '</span>' +
+          '<span class="g-lmain"><b>⛔ ' + esc(e.title) + '</b><small>' + esc(eventTime(e)) + ' · ' + blocksLabel(e) + '</small></span></div>';
+      });
+      if (!list.length && !blocked[d] && !evs.length && !free.length) h += '<div class="g-litem empty">Aucun vol aujourd\'hui</div>';
       list.forEach(function (b) {
         h += '<div class="g-litem st-' + esc(b.status) + '" data-id="' + b.id + '" tabindex="0" role="button">' +
           '<i class="g-dot st-' + esc(b.status) + '"></i><span class="g-ltime">' + esc(b.time) + '</span>' +
@@ -427,6 +605,12 @@
           (b.phone ? '<a class="g-lcall" href="tel:' + esc(intl(b.phone)) + '" aria-label="Appeler ' + esc(b.name) + '">' + icon('phone') + '</a>' : '') +
           '</div>';
       });
+      // Places encore libres : un tap pour réserver
+      if (free.length) {
+        h += '<div class="g-lfree"><span>Libre</span>' + free.map(function (x) {
+          return '<button type="button" data-free-date="' + d + '" data-free-time="' + x.time + '">' + x.time + ' <b>' + x.free + '</b></button>';
+        }).join('') + '</div>';
+      }
       h += '</div></section>';
     }
     if (!any) h += '<p class="g-empty">Aucune réservation sur les 30 prochains jours.</p>';
@@ -619,12 +803,11 @@
       api('calendar', { from: date, to: date }).then(function (data) {
         if (req !== slotReq) return;
         var pax = parseInt(form.passengers.value, 10) || 1;
-        var closed = data.blocked.length ? '<div class="g-warn">Jour fermé : ' + esc(data.blocked[0].reason || 'fermé') + '</div>' : '';
+        var closed = (data.blocked.length ? '<div class="g-warn">Jour fermé : ' + esc(data.blocked[0].reason || 'fermé') + '</div>' : '') +
+          (data.events || []).map(function (ev) { return '<div class="g-warn">⛔ ' + esc(ev.title) + ' · ' + esc(eventTime(ev)) + ' · ' + blocksLabel(ev) + '</div>'; }).join('');
         var chips = data.slots.filter(function (s) { return s.active; }).map(function (s) {
-          var taken = data.bookings.reduce(function (n, x) {
-            return n + (x.time === s.time && x.status !== 'cancelled' && x.id !== b.id ? x.passengers : 0);
-          }, 0);
-          var free = s.capacity - taken;
+          var st = slotFree(data, date, s.time, s.capacity, b.id);
+          var free = st.free;
           var cls = free < pax ? ' full' : '';
           return '<button type="button" class="g-slotchip' + cls + (s.time === form.time.value ? ' on' : '') + '" data-time="' + s.time + '">' +
             '<b>' + s.time + '</b><small>' + (free <= 0 ? 'complet' : free + ' libre' + (free > 1 ? 's' : '')) + '</small></button>';
@@ -665,18 +848,22 @@
       if (seatsEl) payload.pilots = seats.slice(0, Math.max(1, parseInt(form.passengers.value, 10) || 1));
       var btn = form.querySelector('.g-save');
       btn.disabled = true;
+      btn.textContent = 'Enregistrement…';
       save(payload).then(function () {
         closeSheet(true);
         toast(isNew ? 'Réservation créée' : 'Réservation enregistrée');
-        if (payload.date !== state.anchor && (payload.date < range()[0] || payload.date > range()[1])) state.anchor = payload.date;
-        load();
-      }).catch(function (err) { errEl.textContent = err.message; errEl.hidden = false; btn.disabled = false; });
+        if (payload.date < range()[0] || payload.date > range()[1]) { state.anchor = payload.date; load(); }
+        refreshDays([b.date, payload.date]);
+      }).catch(function (err) { errEl.textContent = err.message; errEl.hidden = false; btn.disabled = false; btn.textContent = 'Enregistrer'; });
     });
     var del = form.querySelector('[data-delete]');
     if (del) del.addEventListener('click', function () {
       if (!confirm('Supprimer définitivement la réservation de ' + b.name + ' ?')) return;
       api('admin/booking/' + b.id, null, { method: 'DELETE' }).then(function () {
-        closeSheet(true); toast('Réservation supprimée'); load();
+        closeSheet(true);
+        delete db.bookings[b.id]; rebuild(); render();
+        toast('Réservation supprimée');
+        refreshDays([b.date]);
       }).catch(function (err) { errEl.textContent = err.message; errEl.hidden = false; });
     });
 
@@ -701,6 +888,151 @@
   function newBooking(date, time) {
     var s = activeSlots()[0];
     editBooking({ date: date || (state.view === 'day' ? state.anchor : C.today), time: time || (s ? s.time : '10:00'), status: 'confirmed', passengers: 1 });
+  }
+
+  // ---------- Événements : détail, création, modification ----------
+  function openCreate(date, time) {
+    var bg = openSheet('<div class="g-sheet-bar"><button type="button" class="g-icon-btn" data-close aria-label="Fermer">' + icon('close') + '</button>' +
+      '<span class="g-sheet-title">Créer</span></div><div class="g-sheet-body g-choices">' +
+      '<button type="button" data-choice="booking">' + icon('people') + '<span><b>Réservation</b><small>Un client, un ou plusieurs passagers</small></span></button>' +
+      '<button type="button" data-choice="event">' + icon('block') + '<span><b>Événement / blocage</b><small>Météo, compétition, pilote absent, groupe privé… Bloque les places libres</small></span></button>' +
+      '</div>', 'g-sheet-choice');
+    bg.addEventListener('click', function (e) {
+      var c = e.target.closest('[data-choice]');
+      if (!c) return;
+      closeSheet(true);
+      if (c.getAttribute('data-choice') === 'booking') newBooking(date, time); else newEvent(date, time);
+    });
+  }
+
+  function newEvent(date, time) {
+    var start = time || '08:00';
+    var end = hhmm(Math.min(18 * 60, mins(start) + 120));
+    if (end <= start) end = hhmm(mins(start) + 15);
+    editEvent({ date: date || (state.view === 'day' ? state.anchor : C.today), all_day: time ? 0 : 1, start: start, end: end, title: '', note: '', blocks: 0 });
+  }
+
+  function showEvent(ev) {
+    openSheet('<div class="g-sheet-bar"><button type="button" class="g-icon-btn" data-close aria-label="Fermer">' + icon('close') + '</button></div>' +
+      '<div class="g-sheet-body g-details"><div class="g-dtitle"><span class="g-square g-square-evt"></span><div><h2>' + esc(ev.title) + '</h2>' +
+      '<p>' + esc(longDate(ev.date)) + ' · ' + esc(eventTime(ev)) + '</p></div></div>' +
+      row('block', esc(blocksLabel(ev))) + row('note', esc(ev.note)) + '</div>', 'g-sheet-details');
+  }
+
+  function openEvent(ev) {
+    if (!ev) return;
+    if (C.canEdit) editEvent(Object.assign({}, ev)); else showEvent(ev);
+  }
+
+  var PRESETS = ['Météo', 'Compétition', 'Pilote absent', 'Groupe privé', 'Fermeture'];
+
+  function editEvent(ev) {
+    var isNew = !ev.id;
+    var bg = openSheet(
+      '<form class="g-form" novalidate>' +
+      '<div class="g-sheet-bar"><button type="button" class="g-icon-btn" data-close aria-label="Fermer">' + icon('close') + '</button>' +
+      '<span class="g-sheet-title">' + (isNew ? 'Nouvel événement' : 'Événement') + '</span>' +
+      '<button type="submit" class="g-save">Enregistrer</button></div>' +
+      '<div class="g-sheet-body">' +
+      '<input class="g-name" name="title" placeholder="Titre (ex. Météo, Compétition)" autocomplete="off" value="' + esc(ev.title) + '" required>' +
+      '<div class="g-presets">' + PRESETS.map(function (t) { return '<button type="button" data-preset="' + esc(t) + '">' + esc(t) + '</button>'; }).join('') + '</div>' +
+      '<div class="g-frow">' + icon('clock') + '<div class="g-fcol">' +
+      '<div class="g-inline"><input type="date" name="date" value="' + esc(ev.date) + '" required>' +
+      '<label class="g-switch"><input type="checkbox" name="all_day"' + (ev.all_day ? ' checked' : '') + '><span>Toute la journée</span></label></div>' +
+      '<div class="g-inline g-times"' + (ev.all_day ? ' hidden' : '') + '><select name="start" class="g-timesel">' + timeOptions(ev.start) + '</select>' +
+      '<span class="g-muted">à</span><select name="end" class="g-timesel">' + timeOptions(ev.end) + '</select></div></div></div>' +
+      '<div class="g-frow">' + icon('block') + '<div class="g-fcol">' +
+      '<div class="g-blockmode"><label><input type="radio" name="mode" value="all"' + (ev.blocks > 0 ? '' : ' checked') + '><span>Toutes les places libres</span></label>' +
+      '<label><input type="radio" name="mode" value="some"' + (ev.blocks > 0 ? ' checked' : '') + '><span>Un nombre de places</span></label></div>' +
+      '<div class="g-inline g-blockcount"' + (ev.blocks > 0 ? '' : ' hidden') + '><div class="g-stepper"><button type="button" data-bstep="-1" aria-label="Moins">−</button>' +
+      '<input type="number" name="blocks" min="1" max="30" value="' + (ev.blocks > 0 ? ev.blocks : 1) + '" inputmode="numeric">' +
+      '<button type="button" data-bstep="1" aria-label="Plus">+</button></div><span class="g-muted">place(s) par créneau (ex. pilotes absents)</span></div></div></div>' +
+      '<div class="g-frow">' + icon('note') + '<div class="g-fcol"><textarea name="note" rows="2" placeholder="Note (visible par les pilotes)">' + esc(ev.note) + '</textarea></div></div>' +
+      '<div class="g-impact"></div>' +
+      '<p class="g-error" hidden></p>' +
+      (isNew ? '' : '<button type="button" class="g-delete" data-delete>' + icon('trash') + 'Supprimer l\'événement</button>') +
+      '</div></form>', 'g-sheet-edit');
+
+    var form = bg.querySelector('form'), errEl = form.querySelector('.g-error'), impactEl = form.querySelector('.g-impact');
+    var dayData = null, req = 0;
+    function current() {
+      var some = form.querySelector('input[name=mode]:checked').value === 'some';
+      return {
+        id: ev.id || 0, title: form.title.value.trim(), date: form.date.value, all_day: form.all_day.checked ? 1 : 0,
+        start: form.start.value, end: form.end.value, note: form.note.value, blocks: some ? Math.max(1, parseInt(form.blocks.value, 10) || 1) : 0
+      };
+    }
+    // Aperçu : créneaux concernés et réservations maintenues
+    function impact() {
+      if (!dayData) { impactEl.innerHTML = ''; return; }
+      var cur = current();
+      var others = Object.assign({}, dayData, { events: (dayData.events || []).filter(function (x) { return x.id !== ev.id; }) });
+      var withThis = Object.assign({}, others, { events: others.events.concat([cur]) });
+      var rows = [], kept = [];
+      dayData.slots.filter(function (s) { return s.active; }).forEach(function (s) {
+        var before = slotFree(others, cur.date, s.time, s.capacity), after = slotFree(withThis, cur.date, s.time, s.capacity);
+        if (after.free !== before.free || after.blocked !== before.blocked) {
+          rows.push('<li><b>' + s.time + '</b> ' + before.free + ' libre' + (before.free > 1 ? 's' : '') + ' → <b>' + after.free + '</b></li>');
+          dayData.bookings.forEach(function (x) { if (x.time === s.time && x.status !== 'cancelled') kept.push(x); });
+        }
+      });
+      impactEl.innerHTML = rows.length ? '<h4>Effet sur les réservations en ligne</h4><ul>' + rows.join('') + '</ul>' +
+        (kept.length ? '<div class="g-kept"><b>Réservations déjà prises, maintenues :</b>' + kept.map(function (x) {
+          return '<button type="button" data-open-booking="' + x.id + '">' + esc(x.time) + ' · ' + esc(x.name) + ' · ' + x.passengers + ' pax</button>';
+        }).join('') + '<small>À déplacer ou annuler si nécessaire.</small></div>' : '') : '<p class="g-muted">Aucun créneau réservable concerné.</p>';
+    }
+    function loadDay() {
+      var date = form.date.value, my = ++req;
+      if (!date) return;
+      api('calendar', { from: date, to: date }).then(function (data) { if (my === req) { dayData = data; impact(); } }).catch(function () {});
+    }
+    function markDirty() { if (state.sheet) state.sheet.dirty = true; }
+    form.addEventListener('input', function () { markDirty(); impact(); });
+    form.addEventListener('change', function (e) {
+      markDirty();
+      if (e.target.name === 'date') loadDay();
+      form.querySelector('.g-times').hidden = form.all_day.checked;
+      form.querySelector('.g-blockcount').hidden = form.querySelector('input[name=mode]:checked').value !== 'some';
+      if (e.target.name === 'start' && form.end.value <= form.start.value) form.end.value = hhmm(Math.min(18 * 60, mins(form.start.value) + 60));
+      impact();
+    });
+    form.addEventListener('click', function (e) {
+      var pr = e.target.closest('[data-preset]');
+      if (pr) { form.title.value = pr.getAttribute('data-preset'); markDirty(); }
+      var st = e.target.closest('[data-bstep]');
+      if (st) { form.blocks.value = Math.max(1, (parseInt(form.blocks.value, 10) || 1) + (+st.getAttribute('data-bstep'))); markDirty(); impact(); }
+      var ob = e.target.closest('[data-open-booking]');
+      if (ob && dayData) {
+        var bk = dayData.bookings.filter(function (x) { return x.id === +ob.getAttribute('data-open-booking'); })[0];
+        if (bk && (!state.sheet.dirty || confirm('Quitter sans enregistrer l\'événement ?'))) { closeSheet(true); openBooking(bk); }
+      }
+    });
+    form.addEventListener('submit', function (e) {
+      e.preventDefault();
+      var cur = current();
+      errEl.hidden = true;
+      if (!cur.title) { errEl.textContent = 'Indiquez un titre.'; errEl.hidden = false; form.title.focus(); return; }
+      if (!cur.all_day && cur.end <= cur.start) { errEl.textContent = "L'heure de fin doit être après l'heure de début."; errEl.hidden = false; return; }
+      var btn = form.querySelector('.g-save');
+      btn.disabled = true; btn.textContent = 'Enregistrement…';
+      api('admin/event', null, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(cur) }).then(function () {
+        closeSheet(true);
+        toast(isNew ? 'Événement créé — places bloquées' : 'Événement enregistré');
+        if (cur.date < range()[0] || cur.date > range()[1]) { state.anchor = cur.date; load(); }
+        refreshDays([ev.date, cur.date]);
+      }).catch(function (err) { errEl.textContent = err.message; errEl.hidden = false; btn.disabled = false; btn.textContent = 'Enregistrer'; });
+    });
+    var del = form.querySelector('[data-delete]');
+    if (del) del.addEventListener('click', function () {
+      if (!confirm('Supprimer l\'événement « ' + ev.title + ' » ? Les places redeviennent réservables.')) return;
+      api('admin/event/' + ev.id, null, { method: 'DELETE' }).then(function () {
+        closeSheet(true); delete db.events[ev.id]; rebuild(); render();
+        toast('Événement supprimé — places à nouveau libres');
+        refreshDays([ev.date]);
+      }).catch(function (err) { errEl.textContent = err.message; errEl.hidden = false; });
+    });
+    loadDay();
+    if (isNew) setTimeout(function () { form.title.focus(); }, 50);
   }
 
   // ---------- Recherche ----------
@@ -737,12 +1069,18 @@
   }
 
   // ---------- Navigation ----------
+  function shiftedAnchor(n) {
+    if (n === 0) return C.today;
+    if (state.view === 'day') return addDays(state.anchor, n);
+    if (state.view === 'week') return addDays(state.anchor, 7 * n);
+    if (state.view === 'list') return addDays(state.anchor, 30 * n);
+    var d = toDate(state.anchor);
+    return toStr(new Date(d.getFullYear(), d.getMonth() + n, 1, 12));
+  }
   function shift(n) {
-    if (n === 0) state.anchor = C.today;
-    else if (state.view === 'day') state.anchor = addDays(state.anchor, n);
-    else if (state.view === 'week') state.anchor = addDays(state.anchor, 7 * n);
-    else if (state.view === 'list') state.anchor = addDays(state.anchor, 30 * n);
-    else { var d = toDate(state.anchor); state.anchor = toStr(new Date(d.getFullYear(), d.getMonth() + n, 1, 12)); }
+    var next = shiftedAnchor(n);
+    state.anim = next > state.anchor ? 'next' : next < state.anchor ? 'prev' : '';
+    state.anchor = next;
     load();
   }
   function setView(v) { state.view = v; store('view', v); load(); }
@@ -768,6 +1106,9 @@
     }
     if (t.closest('[data-search]')) return openSearch();
     if (t.closest('[data-new]')) return newBooking();
+    if (t.closest('[data-create]')) return openCreate();
+    if ((el = t.closest('[data-free-time]'))) return newBooking(el.getAttribute('data-free-date'), el.getAttribute('data-free-time'));
+    if ((el = t.closest('[data-event]'))) return openEvent(findEvent(+el.getAttribute('data-event')));
     if (t.closest('[data-list-more]')) { state.anchor = addDays(state.anchor, 30); return load(); }
     if ((el = t.closest('[data-goto]'))) {
       state.anchor = el.getAttribute('data-goto');
@@ -785,8 +1126,12 @@
   });
 
   root.addEventListener('keydown', function (e) {
-    var el = e.target.closest && e.target.closest('[data-id]');
-    if (el && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); openBooking(findBooking(+el.getAttribute('data-id'))); }
+    var el = e.target.closest && e.target.closest('[data-id], [data-event]');
+    if (el && (e.key === 'Enter' || e.key === ' ')) {
+      e.preventDefault();
+      if (el.hasAttribute('data-event')) openEvent(findEvent(+el.getAttribute('data-event')));
+      else openBooking(findBooking(+el.getAttribute('data-id')));
+    }
   });
 
   root.addEventListener('change', function (e) {
@@ -811,7 +1156,24 @@
     else if (k === 'arrowright') shift(1);
     else if (k === '/') { e.preventDefault(); openSearch(); }
     else if (k === 'c' && C.canEdit) newBooking();
+    else if (k === 'e' && C.canEdit) newEvent();
   });
+
+  // Déplacement immédiat à l'écran, enregistrement en arrière-plan, avec « Annuler »
+  function moveBooking(b, date, time) {
+    var old = { date: b.date, time: b.time };
+    b.date = date; b.time = time; render();
+    save(Object.assign({}, b)).then(function () {
+      toast(b.name + ' → ' + longDate(date) + ' à ' + time, 'Annuler', function () {
+        b.date = old.date; b.time = old.time; render();
+        save(Object.assign({}, b)).then(function () { refreshDays([old.date, date]); });
+      });
+      refreshDays([old.date, date]);
+    }).catch(function (err) {
+      b.date = old.date; b.time = old.time; render();
+      toast('Déplacement impossible : ' + err.message);
+    });
+  }
 
   // Heure correspondant à une position verticale, arrondie au créneau le plus proche
   function timeAt(col, clientY, offset) {
@@ -864,12 +1226,7 @@
       state.dragging = false;
       state.drag = null;
       if (!b || (b.date === date && b.time === time)) return render();
-      save(Object.assign({}, b, { date: date, time: time })).then(function () {
-        toast(b.name + ' déplacé au ' + longDate(date) + ' à ' + time);
-        return load();
-      }).catch(function (err) { alert(err.message); load(); });
-      // Mise à jour immédiate de l'affichage
-      b.date = date; b.time = time; render();
+      moveBooking(b, date, time);
     });
   }
 
@@ -889,8 +1246,13 @@
 
   // Ligne « maintenant » et nouvelles réservations : actualisation régulière
   setInterval(function () {
-    if (!state.sheet && !state.dragging && !document.hidden) load();
-  }, 60000);
+    if (state.sheet || state.dragging || document.hidden || !state.data) return;
+    var r = neededRange();
+    fetchRange(r[0], r[1], true).catch(function () {});
+  }, 45000);
+  document.addEventListener('visibilitychange', function () {
+    if (!document.hidden && state.data && !state.sheet) { var r = neededRange(); fetchRange(r[0], r[1], true).catch(function () {}); }
+  });
   mq.addEventListener && mq.addEventListener('change', function () { state.sidebar = !mq.matches && store('sidebar') !== '0'; render(); });
 
   load();

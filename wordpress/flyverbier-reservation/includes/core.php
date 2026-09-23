@@ -87,12 +87,16 @@ function fvr_availability(string $date): array
     }
 
     $nowTime = current_time('H:i');
+    $events = fvr_events_between($date, $date);
     $out = [];
     foreach ($wpdb->get_results('SELECT time, capacity FROM ' . fvr_table('slots') . ' WHERE active = 1 ORDER BY time', ARRAY_A) as $s) {
         if ($date === $today && $s['time'] <= $nowTime) {
             continue;
         }
-        $out[] = ['time' => $s['time'], 'remaining' => max(0, (int) $s['capacity'] - ($taken[$s['time']] ?? 0))];
+        // Les événements (météo, pilote absent…) retirent des places libres
+        $blocked = fvr_event_blocked($events, $date, $s['time']);
+        $free = $blocked === PHP_INT_MAX ? 0 : (int) $s['capacity'] - ($taken[$s['time']] ?? 0) - $blocked;
+        $out[] = ['time' => $s['time'], 'remaining' => max(0, $free)];
     }
     return $out;
 }

@@ -226,7 +226,7 @@ body.fvr-cal-page .g-app { height: 100vh; height: 100dvh; }
 .g-frow > .g-ic { margin-top: 10px; color: var(--g-muted); }
 .g-fcol { flex: 1; min-width: 0; }
 .g-inline { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
-.g-form input:not([type=radio]):not(.g-name), .g-form select, .g-form textarea {
+.g-form input:not([type=radio]):not([type=checkbox]):not(.g-name), .g-form select, .g-form textarea {
   width: 100%; font: inherit; font-size: 15px; color: var(--g-text); background: var(--g-soft); border: 0; border-bottom: 1px solid transparent; border-radius: 6px 6px 0 0; padding: 10px 12px; min-height: 42px; outline: none; }
 .g-form input:focus, .g-form select:focus, .g-form textarea:focus { background: #e8eaed; border-bottom: 2px solid var(--g-blue); }
 .g-inline input[type=date] { flex: 1 1 150px; width: auto; }
@@ -306,7 +306,8 @@ body.fvr-cal-page .g-app { height: 100vh; height: 100dvh; }
   .g-lday { padding-right: 8px; }
   .g-sheet-bg { padding: 0; align-items: flex-end; }
   .g-sheet { max-width: none; max-height: 100%; height: 100%; border-radius: 0; }
-  .g-sheet-details { height: auto; max-height: 85%; border-radius: 16px 16px 0 0; }
+  .g-sheet-details, .g-sheet-choice { height: auto; max-height: 85%; border-radius: 16px 16px 0 0; }
+  .g-sheet-choice .g-choices { padding-bottom: calc(16px + env(safe-area-inset-bottom, 0px)); }
   .g-sheet-search { margin-top: 0; }
   .g-sheet-body { padding: 8px 16px calc(24px + env(safe-area-inset-bottom, 0px)); }
   .g-frow { gap: 12px; }
@@ -338,3 +339,86 @@ body.fvr-cal-page .g-app { height: 100vh; height: 100dvh; }
 .g-datepick input { position: absolute; inset: 0; opacity: 0; width: 100%; height: 100%; cursor: pointer; border: 0; padding: 0; }
 .g-datepick input::-webkit-calendar-picker-indicator { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; }
 .read-only .g-slot { display: none; }
+
+/* ---------- Fluidité ---------- */
+.g-top { position: relative; }
+.g-progress { position: absolute; left: 0; right: 0; bottom: -1px; height: 3px; overflow: hidden; opacity: 0; transition: opacity .2s; pointer-events: none; }
+.g-progress::before { content: ""; position: absolute; top: 0; bottom: 0; width: 35%; background: var(--g-blue); border-radius: 2px; animation: g-progress 1s ease-in-out infinite; }
+.is-loading .g-progress { opacity: 1; }
+@keyframes g-progress { from { left: -35%; } to { left: 100%; } }
+.g-anim-next > :last-child { animation: g-in-next .18s ease-out; }
+.g-anim-prev > :last-child { animation: g-in-prev .18s ease-out; }
+@keyframes g-in-next { from { opacity: .3; transform: translateX(24px); } to { opacity: 1; transform: none; } }
+@keyframes g-in-prev { from { opacity: .3; transform: translateX(-24px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .g-anim-next > :last-child, .g-anim-prev > :last-child, .g-progress::before { animation: none; } }
+.fvr-cal button, .g-ev, .g-litem, .g-evt { -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
+.g-ev:active, .g-litem:active, .g-ghost:active, .g-evt:active { transform: scale(.98); }
+.g-toast { display: flex; align-items: center; gap: 16px; }
+.g-toast button { border: 0; background: none; color: #a8c7fa; font: inherit; font-weight: 600; cursor: pointer; padding: 4px 6px; margin: -4px -6px -4px 0; }
+
+/* ---------- Événements ---------- */
+.g-allday { display: flex; border-bottom: 1px solid var(--g-line); padding-right: var(--sbw, 0px); }
+.g-allday .g-gutter { width: var(--gutter); flex: none; }
+.g-allday-cell { flex: 1; min-width: 0; padding: 2px; border-left: 1px solid var(--g-line); display: flex; flex-direction: column; gap: 2px; }
+.g-evt-chip, .g-mevt { background: #5f6368; color: #fff; border-radius: 4px; padding: 2px 6px; font-size: 12px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer; }
+.g-mevt { font-size: 11px; padding: 1px 4px; }
+.g-evt {
+  position: absolute; z-index: 2; overflow: hidden; border-radius: 6px; padding: 3px 6px; cursor: pointer; font-size: 12px; line-height: 1.3;
+  color: #3c4043; border: 1px solid #9aa0a6; display: flex; flex-direction: column;
+  background: repeating-linear-gradient(135deg, #f1f3f4 0 6px, #e3e5e8 6px 12px);
+}
+.g-evt b { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.g-evt span { font-size: 11px; color: var(--g-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.read-only .g-evt, .read-only .g-evt-chip { cursor: default; }
+.g-square-evt { background: repeating-linear-gradient(135deg, #9aa0a6 0 3px, #dadce0 3px 6px); }
+
+/* ---------- Places libres ---------- */
+.g-ghost {
+  position: absolute; z-index: 1; border: 1.5px dashed #81c995; border-radius: 6px; background: rgba(230,244,234,.55);
+  color: #137333; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0; padding: 2px; font: inherit; line-height: 1.1;
+}
+.g-ghost b { font-size: 15px; font-weight: 600; }
+.g-ghost span { font-size: 11px; }
+.g-ghost:hover { background: #e6f4ea; border-style: solid; }
+.g-mfree { margin-top: auto; font-size: 11px; font-weight: 500; color: #137333; text-align: right; padding: 0 2px; }
+.g-lfree { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 6px 10px 10px; }
+.g-lfree > span { font-size: 12px; color: var(--g-muted); margin-right: 2px; }
+.g-lfree button { border: 1.5px dashed #81c995; background: #f3faf5; color: #137333; border-radius: 16px; padding: 5px 10px; font-size: 13px; }
+.g-lfree button b { font-weight: 700; margin-left: 2px; }
+.g-levt { background: repeating-linear-gradient(135deg, #f8f9fa 0 6px, #f1f3f4 6px 12px); }
+.g-levt .g-ltime { font-size: 12px; }
+
+/* ---------- Fiche « Créer » et fiche événement ---------- */
+.g-sheet-choice { max-width: 440px; }
+.g-choices { display: flex; flex-direction: column; gap: 10px; padding: 16px; }
+.g-choices button { display: flex; align-items: center; gap: 16px; text-align: left; border: 1px solid var(--g-line); background: #fff; border-radius: 12px; padding: 16px; }
+.g-choices button:hover { background: var(--g-hover); }
+.g-choices .g-ic { width: 28px; height: 28px; color: var(--g-blue); }
+.g-choices span { display: flex; flex-direction: column; }
+.g-choices b { font-size: 16px; font-weight: 500; }
+.g-choices small { color: var(--g-muted); font-size: 13px; }
+.g-presets { display: flex; flex-wrap: wrap; gap: 6px; margin: -4px 0 12px; }
+.g-presets button { border: 1px solid var(--g-line); background: #fff; border-radius: 16px; padding: 5px 12px; font-size: 13px; }
+.g-presets button:hover { background: var(--g-soft); }
+.g-switch { display: inline-flex; align-items: center; gap: 8px; font-size: 14px; cursor: pointer; }
+.g-form .g-switch input { width: 18px; height: 18px; min-height: 0; accent-color: var(--g-blue); }
+.g-times { margin-top: 8px; }
+.g-blockmode { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 8px; }
+.g-blockmode label { position: relative; }
+.g-blockmode input { position: absolute; opacity: 0; }
+.g-blockmode span { display: inline-block; border: 1px solid var(--g-line); border-radius: 8px; padding: 8px 12px; font-size: 13px; font-weight: 500; cursor: pointer; }
+.g-blockmode input:checked + span { background: var(--g-blue-soft); border-color: var(--g-blue); color: #041e49; }
+.g-impact { margin: 8px 0 0 36px; }
+.g-impact h4 { margin: 0 0 4px; font-size: 13px; font-weight: 500; color: var(--g-muted); }
+.g-impact ul { margin: 0; padding: 0; list-style: none; display: flex; flex-wrap: wrap; gap: 6px; }
+.g-impact li { background: var(--g-soft); border-radius: 6px; padding: 4px 8px; font-size: 13px; }
+.g-kept { margin-top: 10px; padding: 10px; border-radius: 8px; background: #fef7e0; font-size: 13px; display: flex; flex-direction: column; gap: 6px; align-items: flex-start; }
+.g-kept button { border: 0; background: none; color: var(--g-blue); padding: 0; text-align: left; font-size: 13px; text-decoration: underline; }
+.g-kept small { color: var(--g-muted); }
+@media (max-width: 760px) {
+  .g-impact { margin-left: 32px; }
+  .g-ghost span { display: none; }
+}
+
+.g-ghost.side { padding: 0; }
+.g-ghost.side b { font-size: 12px; }

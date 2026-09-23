@@ -167,6 +167,7 @@ function fvr_calendar_data(string $from, string $to, bool $canEdit): array
         'blocked'  => $wpdb->get_results($wpdb->prepare(
             'SELECT date, reason FROM ' . fvr_table('blocked') . ' WHERE date BETWEEN %s AND %s', $from, $to), ARRAY_A),
         'bookings' => $bookings,
+        'events'   => fvr_events_between($from, $to),
         'pilots'   => array_map(function ($p) {
             return ['id' => $p['id'], 'name' => $p['name'], 'color' => $p['color'], 'rank' => $p['default_rank'], 'active' => $p['active']];
         }, fvr_pilots()),
@@ -377,6 +378,24 @@ function fvr_output_ics(string $token): void
             'DESCRIPTION:' . fvr_ics_escape($desc),
             'STATUS:' . ($b['status'] === 'pending' ? 'TENTATIVE' : 'CONFIRMED'),
             'END:VEVENT');
+    }
+    // Événements (météo, compétition, pilote absent…)
+    foreach (fvr_events_between($from, gmdate('Y-m-d', strtotime(fvr_today() . ' +400 days'))) as $e) {
+        $ev = ['BEGIN:VEVENT', 'UID:fvr-event-' . $e['id'] . '@' . $host, 'DTSTAMP:' . gmdate('Ymd\THis\Z')];
+        if ($e['all_day']) {
+            $ev[] = 'DTSTART;VALUE=DATE:' . str_replace('-', '', $e['date']);
+            $ev[] = 'DTEND;VALUE=DATE:' . gmdate('Ymd', strtotime($e['date'] . ' 12:00:00 +1 day'));
+        } else {
+            $ev[] = 'DTSTART:' . (new DateTime($e['date'] . ' ' . $e['start'], $tz))->setTimezone($utc)->format('Ymd\THis\Z');
+            $ev[] = 'DTEND:' . (new DateTime($e['date'] . ' ' . $e['end'], $tz))->setTimezone($utc)->format('Ymd\THis\Z');
+        }
+        $ev[] = 'SUMMARY:' . fvr_ics_escape('⛔ ' . $e['title']);
+        if ($e['note']) {
+            $ev[] = 'DESCRIPTION:' . fvr_ics_escape($e['note']);
+        }
+        $ev[] = 'TRANSP:OPAQUE';
+        $ev[] = 'END:VEVENT';
+        $lines = array_merge($lines, $ev);
     }
     $lines[] = 'END:VCALENDAR';
 

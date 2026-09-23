@@ -88,6 +88,21 @@ function fvr_install(): void
   KEY pilot_id (pilot_id)
 ) $charset;");
 
+    dbDelta("CREATE TABLE " . fvr_table('events') . " (
+  id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+  date date NOT NULL,
+  all_day tinyint(1) NOT NULL DEFAULT 0,
+  start_time char(5) NOT NULL DEFAULT '00:00',
+  end_time char(5) NOT NULL DEFAULT '23:59',
+  title varchar(190) NOT NULL,
+  note text NOT NULL,
+  blocks int(11) NOT NULL DEFAULT 0,
+  created_at datetime NOT NULL,
+  updated_at datetime NOT NULL,
+  PRIMARY KEY  (id),
+  KEY date (date)
+) $charset;");
+
     // Données de départ, uniquement lors de la première installation
     if (!(int) $wpdb->get_var('SELECT COUNT(*) FROM ' . fvr_table('flights'))) {
         $flights = [

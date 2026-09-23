@@ -41,27 +41,61 @@ function fvr_ics_url(): string
 
 // ---------- Données du calendrier ----------
 
+// Les pilotes ne voient ni les prix ni les e-mails des clients
+function fvr_booking_view(array $b, bool $canEdit): array
+{
+    $fields = ['id', 'reference', 'date', 'time', 'flight_id', 'flight_name', 'passengers', 'name', 'phone',
+               'weights', 'message', 'status', 'admin_notes'];
+    if ($canEdit) {
+        array_push($fields, 'price', 'email', 'created_at');
+    }
+    $out = array_intersect_key($b, array_flip($fields));
+    $out['id'] = (int) $out['id'];
+    $out['passengers'] = (int) $out['passengers'];
+    $out['flight_id'] = (int) $out['flight_id'];
+    if (isset($out['price'])) {
+        $out['price'] = (float) $out['price'];
+    }
+    return $out;
+}
+
+// Recherche rapide (nom, téléphone, référence, e-mail) parmi les réservations récentes et à venir
+function fvr_search_bookings(string $q, bool $canEdit): array
+{
+    global $wpdb;
+    $q = trim($q);
+    if (mb_strlen($q) < 2) {
+        return [];
+    }
+    $like = '%' . $wpdb->esc_like($q) . '%';
+    $where = ['name LIKE %s', 'reference LIKE %s'];
+    $args = [$like, $like];
+    if ($canEdit) {
+        $where[] = 'email LIKE %s';
+        $args[] = $like;
+    }
+    $digits = preg_replace('/\D/', '', $q);
+    if (strlen($digits) >= 3) {
+        // Ignore espaces, points et tirets dans les numéros ; « 079… » retrouve aussi « +41 79… »
+        $where[] = "REPLACE(REPLACE(REPLACE(phone, ' ', ''), '.', ''), '-', '') LIKE %s";
+        $args[] = '%' . $wpdb->esc_like(ltrim($digits, '0')) . '%';
+    }
+    $args[] = gmdate('Y-m-d', strtotime(fvr_today() . ' -60 days'));
+    $rows = $wpdb->get_results($wpdb->prepare('SELECT * FROM ' . fvr_table('bookings') . ' WHERE (' . implode(' OR ', $where)
+        . ') AND date >= %s ORDER BY date, time LIMIT 30', $args), ARRAY_A);
+    return array_map(function ($b) use ($canEdit) {
+        return fvr_booking_view($b, $canEdit);
+    }, $rows);
+}
+
 function fvr_calendar_data(string $from, string $to, bool $canEdit): array
 {
     global $wpdb;
     $bookings = $wpdb->get_results($wpdb->prepare(
         'SELECT * FROM ' . fvr_table('bookings') . ' WHERE date BETWEEN %s AND %s ORDER BY date, time, id', $from, $to), ARRAY_A);
 
-    // Les pilotes ne voient ni les prix ni les e-mails des clients
-    $fields = ['id', 'reference', 'date', 'time', 'flight_id', 'flight_name', 'passengers', 'name', 'phone',
-               'weights', 'message', 'status', 'admin_notes'];
-    if ($canEdit) {
-        array_push($fields, 'price', 'email', 'created_at');
-    }
-    $bookings = array_map(function ($b) use ($fields) {
-        $out = array_intersect_key($b, array_flip($fields));
-        $out['id'] = (int) $out['id'];
-        $out['passengers'] = (int) $out['passengers'];
-        $out['flight_id'] = (int) $out['flight_id'];
-        if (isset($out['price'])) {
-            $out['price'] = (float) $out['price'];
-        }
-        return $out;
+    $bookings = array_map(function ($b) use ($canEdit) {
+        return fvr_booking_view($b, $canEdit);
     }, $bookings);
 
     $data = [
@@ -96,12 +130,24 @@ add_action('rest_api_init', function () {
             $from = (string) $req->get_param('from');
             $to = (string) $req->get_param('to');
             if (!fvr_valid_date($from) || !fvr_valid_date($to) || $to < $from
-                || strtotime($to) - strtotime($from) > 62 * DAY_IN_SECONDS) {
+                || strtotime($to) - strtotime($from) > 100 * DAY_IN_SECONDS) {
                 return new WP_Error('invalid', 'Période invalide.', ['status' => 400]);
             }
             $res = rest_ensure_response(fvr_calendar_data($from, $to, current_user_can(fvr_cap())));
             $res->header('Cache-Control', 'no-store');
             $res->header('X-Robots-Tag', 'noindex');
+            return $res;
+        },
+    ]);
+
+    register_rest_route('fvr/v1', '/search', [
+        'methods'             => 'GET',
+        'permission_callback' => function (WP_REST_Request $req) {
+            return current_user_can(fvr_cap()) || fvr_valid_token($req->get_param('token'));
+        },
+        'callback'            => function (WP_REST_Request $req) {
+            $res = rest_ensure_response(['bookings' => fvr_search_bookings((string) $req->get_param('q'), current_user_can(fvr_cap()))]);
+            $res->header('Cache-Control', 'no-store');
             return $res;
         },
     ]);
@@ -141,6 +187,7 @@ function fvr_calendar_config(bool $canEdit, string $token = ''): array
         'nonce'    => $canEdit ? wp_create_nonce('wp_rest') : '',
         'canEdit'  => $canEdit,
         'today'    => fvr_today(),
+        'site'     => wp_specialchars_decode(get_bloginfo('name'), ENT_QUOTES),
         'statuses' => fvr_status_labels(),
         'icsUrl'   => $token ? fvr_ics_url() : '',
         'editUrl'  => $canEdit ? admin_url('admin.php?page=fvr-edit&id=') : '',
@@ -175,16 +222,16 @@ add_action('template_redirect', function () {
 <html lang="fr">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="robots" content="noindex, nofollow">
-<title>Planning des vols · <?php echo esc_html($site); ?></title>
+<meta name="theme-color" content="#ffffff">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Planning">
+<title>Planning · <?php echo esc_html($site); ?></title>
 <link rel="stylesheet" href="<?php echo esc_url(FVR_URL . 'assets/calendar.css?ver=' . FVR_VERSION); ?>">
 </head>
 <body class="fvr-cal-page">
-<header class="fvr-cal-top">
-  <strong><?php echo esc_html($site); ?> · Planning des vols</strong>
-  <span class="fvr-cal-mode"><?php echo $canEdit ? 'Mode administrateur : vous pouvez modifier' : 'Consultation seule'; ?></span>
-</header>
 <?php echo fvr_calendar_container(); ?>
 <script>window.fvrCalendar = <?php echo wp_json_encode($config); ?>;</script>
 <script src="<?php echo esc_url(FVR_URL . 'assets/calendar.js?ver=' . FVR_VERSION); ?>"></script>

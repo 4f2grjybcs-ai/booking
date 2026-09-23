@@ -150,6 +150,7 @@
       .then(getJSON)
       .then(function (data) {
         root.querySelector('.fvr-done-ref').textContent = data.reference;
+        root.querySelector('.fvr-done-msg').textContent = data.message || 'Votre vol est réservé !';
         form.hidden = true;
         root.querySelector('.fvr-done').hidden = false;
         root.scrollIntoView({ behavior: 'smooth' });
@@ -163,6 +164,17 @@
         submitBtn.textContent = 'Envoyer ma réservation';
       });
   });
+
+  // Conditions générales : lecture dans une fenêtre, « J'accepte » coche la case
+  var dlg = root.querySelector('.fvr-terms-dialog');
+  if (dlg) {
+    var open = function (e) { e.preventDefault(); if (dlg.showModal) dlg.showModal(); else dlg.setAttribute('open', ''); };
+    var close = function () { if (dlg.close) dlg.close(); else dlg.removeAttribute('open'); };
+    root.querySelector('.fvr-terms-link').addEventListener('click', open);
+    dlg.querySelector('.fvr-terms-close').addEventListener('click', close);
+    dlg.querySelector('.fvr-terms-accept').addEventListener('click', function () { form.terms.checked = true; close(); });
+    dlg.addEventListener('click', function (e) { if (e.target === dlg) close(); });
+  }
 
   // Dates possibles : d'aujourd'hui (heure suisse du site) à +maxDays jours
   dateEl.min = fvrConfig.today;

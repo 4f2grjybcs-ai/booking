@@ -76,7 +76,9 @@ add_action('admin_post_fvr', function () {
             if (!isset(fvr_status_labels()[$p['status'] ?? ''])) {
                 fvr_back($back, 'Statut invalide.', true);
             }
+            $before = fvr_booking_snapshot((int) $p['id']);
             $wpdb->update(fvr_table('bookings'), ['status' => $p['status'], 'updated_at' => fvr_now()], ['id' => (int) $p['id']]);
+            fvr_notify_changes($before, fvr_booking_snapshot((int) $p['id']));
             fvr_back($back, 'Statut mis à jour.');
 
         case 'save_booking':
@@ -169,6 +171,10 @@ add_action('admin_post_fvr', function () {
             $wpdb->delete(fvr_table('pilots'), ['id' => (int) $p['id']]);
             fvr_back(admin_url('admin.php?page=fvr-pilots'), 'Pilote supprimé. Ses vols sont repassés « à définir ».');
 
+        case 'push_test_pilot':
+            $sent = fvr_push_to_pilot((int) $p['id'], ['title' => '🔔 Test', 'body' => 'Notification de test envoyée par l\'administrateur.', 'tag' => 'fvr-test']);
+            fvr_back(admin_url('admin.php?page=fvr-pilots'), $sent ? 'Notification envoyée.' : 'Envoi impossible (appareil hors ligne ou notifications désactivées).', !$sent);
+
         case 'regen_pilot_token':
             $wpdb->update(fvr_table('pilots'), ['token' => fvr_new_pilot_token()], ['id' => (int) $p['id']]);
             fvr_back(admin_url('admin.php?page=fvr-pilots'), 'Nouveau lien créé pour ce pilote : l\'ancien ne fonctionne plus.');
@@ -193,10 +199,26 @@ add_action('admin_post_fvr', function () {
             update_option('fvr_settings', array_merge(fvr_settings(), [
                 'admin_email'       => sanitize_email($p['admin_email'] ?? ''),
                 'send_client_email' => empty($p['send_client_email']) ? 0 : 1,
+                'auto_confirm'      => empty($p['auto_confirm']) ? 0 : 1,
                 'ref_prefix'        => sanitize_text_field($p['ref_prefix'] ?? 'FV'),
+                'from_name'         => sanitize_text_field($p['from_name'] ?? '') ?: fvr_mail_defaults()['from_name'],
+                'from_email'        => sanitize_email($p['from_email'] ?? '') ?: fvr_mail_defaults()['from_email'],
+                'client_subject'    => sanitize_text_field($p['client_subject'] ?? ''),
                 'client_message'    => sanitize_textarea_field($p['client_message'] ?? ''),
+                'client_info'       => sanitize_textarea_field($p['client_info'] ?? ''),
+                'client_signature'  => sanitize_textarea_field($p['client_signature'] ?? ''),
+                'screen_message'    => sanitize_textarea_field($p['screen_message'] ?? ''),
+                'terms'             => wp_kses_post($p['terms'] ?? ''),
+                'reply_to'          => sanitize_email($p['reply_to'] ?? ''),
+                'terms_in_email'    => empty($p['terms_in_email']) ? 0 : 1,
             ]));
             fvr_back($settingsUrl, 'Réglages enregistrés.');
+
+        case 'test_email':
+            $sample = fvr_sample_booking();
+            $ok = fvr_send_client_email($sample) && fvr_send_admin_email($sample);
+            fvr_back($settingsUrl, $ok ? 'E-mails de test envoyés à ' . fvr_settings()['admin_email'] . '. Vérifiez aussi le dossier spam.'
+                : "L'envoi a échoué : votre hébergement n'envoie pas d'e-mails. Installez l'extension « WP Mail SMTP ».", !$ok);
     }
     fvr_back($listUrl);
 });
@@ -650,14 +672,54 @@ function fvr_page_settings(): void
       </div>
 
       <div class="fvr-panel">
-        <h2>E-mails et réglages</h2>
+        <h2>Réservation et e-mails</h2>
         <?php echo fvr_form_open('save_settings'); ?>
+          <label class="fvr-check fvr-big"><input type="checkbox" name="auto_confirm" value="1"<?php checked($s['auto_confirm'], 1); ?>>
+            <span><strong>Confirmation immédiate</strong> : le client réserve et son vol est confirmé tout de suite
+            (sinon la réservation arrive « en attente » et vous la confirmez vous-même).</span></label>
+
+          <h3>Expéditeur</h3>
           <div class="fvr-grid">
-            <label>E-mail qui reçoit les nouvelles réservations
-              <input type="email" name="admin_email" value="<?php echo esc_attr($s['admin_email']); ?>"></label>
-            <label>Préfixe des références
-              <input type="text" name="ref_prefix" maxlength="6" value="<?php echo esc_attr($s['ref_prefix']); ?>"></label>
+            <label>Nom de l'expéditeur <input type="text" name="from_name" value="<?php echo esc_attr($s['from_name']); ?>"></label>
+            <label>Adresse d'expédition <input type="email" name="from_email" value="<?php echo esc_attr($s['from_email']); ?>"></label>
+            <label>Vos e-mails de réservation arrivent à <input type="email" name="admin_email" value="<?php echo esc_attr($s['admin_email']); ?>"></label>
+            <label>Quand le client répond à la confirmation, la réponse arrive à
+              <input type="email" name="reply_to" value="<?php echo esc_attr($s['reply_to']); ?>" placeholder="<?php echo esc_attr($s['admin_email']); ?>"></label>
+            <label>Préfixe des références <input type="text" name="ref_prefix" maxlength="6" value="<?php echo esc_attr($s['ref_prefix']); ?>"></label>
           </div>
+          <p class="description">Utilisez une adresse de votre domaine (ex. reservation@<?php echo esc_html(fvr_site_domain()); ?>) :
+            une adresse Gmail ou autre en expéditeur finit souvent dans les spams.</p>
+
+          <h3>E-mail de confirmation au client</h3>
+          <label class="fvr-check"><input type="checkbox" name="send_client_email" value="1"<?php checked($s['send_client_email'], 1); ?>>
+            Envoyer l'e-mail de confirmation au client</label>
+          <label>Objet <input type="text" name="client_subject" class="large-text" value="<?php echo esc_attr($s['client_subject']); ?>"></label>
+          <label>Message d'accueil <textarea name="client_message" rows="3" class="large-text"><?php echo esc_textarea($s['client_message']); ?></textarea></label>
+          <p class="description">Le récapitulatif (référence, vol, date, heure, passagers, total) est ajouté automatiquement sous ce message.</p>
+          <label>Informations pratiques (lieu de rendez-vous, quoi apporter, accès…)
+            <textarea name="client_info" rows="4" class="large-text" placeholder="Rendez-vous au départ de la télécabine de Médran, 20 minutes avant l'heure du vol. Prévoir de bonnes chaussures et une veste chaude."><?php echo esc_textarea($s['client_info']); ?></textarea></label>
+          <label>Signature / fin du message <textarea name="client_signature" rows="4" class="large-text"><?php echo esc_textarea($s['client_signature']); ?></textarea></label>
+
+          <h3>Conditions générales</h3>
+          <p class="description">Si ce texte est rempli, le client doit cocher « J'accepte les conditions générales » pour réserver
+            (il peut les lire dans une fenêtre). Pour les afficher aussi sur une page du site : <code>[conditions_parapente]</code></p>
+          <?php wp_editor($s['terms'], 'fvr_terms', ['textarea_name' => 'terms', 'textarea_rows' => 12, 'media_buttons' => false,
+              'teeny' => true, 'quicktags' => false]); ?>
+          <label class="fvr-check"><input type="checkbox" name="terms_in_email" value="1"<?php checked($s['terms_in_email'], 1); ?>>
+            Joindre les conditions générales en bas de l'e-mail de confirmation</label>
+
+          <h3>Message affiché à l'écran après la réservation</h3>
+          <label><textarea name="screen_message" rows="2" class="large-text"><?php echo esc_textarea($s['screen_message']); ?></textarea></label>
+
+          <p class="fvr-tags"><strong>Mots-clés disponibles</strong> (remplacés automatiquement) :
+            <?php foreach (array_keys(fvr_placeholders(fvr_sample_booking())) as $tag): ?><code><?php echo esc_html($tag); ?></code> <?php endforeach; ?></p>
+          <p><button class="button button-primary">Enregistrer</button></p>
+        </form>
+        <?php echo fvr_form_open('test_email', 'class="fvr-inline"'); ?>
+          <p><button class="button">Envoyer un e-mail de test à <?php echo esc_html($s['admin_email']); ?></button>
+            <span class="description">Vous recevez l'e-mail client et l'e-mail administrateur d'une réservation fictive.</span></p>
+        </form>
+      </div>
           <label class="fvr-check"><input type="checkbox" name="send_client_email" value="1"<?php checked($s['send_client_email'], 1); ?>>
             Envoyer un e-mail récapitulatif au client</label>
           <label>Texte de l'e-mail au client
@@ -721,6 +783,18 @@ function fvr_page_pilots(): void
               <a class="button" href="<?php echo esc_url(fvr_pilot_planning_url($pl)); ?>" target="_blank">Ouvrir</a>
               <?php if ($pl['phone']): ?>
                 <a class="button" target="_blank" rel="noopener" href="<?php echo esc_url('https://wa.me/' . preg_replace('/\D/', '', preg_replace('/^0(?!0)/', '41', preg_replace('/^00/', '', preg_replace('/[^0-9]/', '', $pl['phone'])))) . '?text=' . rawurlencode('Voici ton planning des vols : ' . fvr_pilot_planning_url($pl))); ?>">Envoyer par WhatsApp</a>
+              <?php endif; ?>
+            </p>
+            <?php $devices = fvr_push_count((int) $pl['id']); ?>
+            <p class="fvr-push-state">
+              <?php if ($devices): ?>
+                🔔 Notifications activées sur <?php echo $devices; ?> appareil<?php echo $devices > 1 ? 's' : ''; ?>
+                <?php echo fvr_form_open('push_test_pilot', 'class="fvr-inline"'); ?>
+                  <input type="hidden" name="id" value="<?php echo (int) $pl['id']; ?>">
+                  <button class="button button-small">Envoyer une notification test</button>
+                </form>
+              <?php else: ?>
+                🔕 Notifications pas encore activées — le pilote les active depuis son planning (bouton 🔔).
               <?php endif; ?>
             </p>
             <p class="description">Abonnement agenda (uniquement ses vols) :</p>

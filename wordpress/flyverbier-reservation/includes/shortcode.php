@@ -58,6 +58,17 @@ add_shortcode('reservation_parapente', function () {
             <span>Je confirme que les passagers sont en bonne santé et j'accepte que le vol puisse être
             déplacé ou annulé en raison de la météo.</span>
           </label>
+          <?php $terms = fvr_terms_html(); if ($terms): ?>
+            <label class="fvr-check">
+              <input type="checkbox" name="terms" value="1" required>
+              <span>J'ai lu et j'accepte les <a href="#" class="fvr-terms-link">conditions générales</a>.</span>
+            </label>
+            <dialog class="fvr-terms-dialog">
+              <div class="fvr-terms-head"><strong>Conditions générales</strong><button type="button" class="fvr-terms-close" aria-label="Fermer">×</button></div>
+              <div class="fvr-terms-body"><?php echo $terms; ?></div>
+              <div class="fvr-terms-foot"><button type="button" class="fvr-terms-accept">J'accepte</button></div>
+            </dialog>
+          <?php endif; ?>
         </section>
 
         <div class="fvr-summary" hidden></div>
@@ -66,9 +77,9 @@ add_shortcode('reservation_parapente', function () {
       </form>
 
       <section class="fvr-done" hidden>
-        <h3>Merci ! Votre demande est enregistrée.</h3>
+        <h3>Merci !</h3>
+        <p class="fvr-done-msg"></p>
         <p>Votre référence : <strong class="fvr-done-ref"></strong></p>
-        <p>Nous vous contacterons rapidement pour confirmer votre vol. Un e-mail récapitulatif vous a été envoyé.</p>
       </section>
     </div>
     <?php

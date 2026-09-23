@@ -98,3 +98,15 @@
 @media (max-width: 600px) {
   .fvr-row { grid-template-columns: 1fr; }
 }
+
+/* Conditions générales */
+.fvr-check a { color: var(--fvr-accent); text-decoration: underline; }
+.fvr-booking .fvr-check + .fvr-check { margin-top: .6rem; }
+.fvr-terms-dialog { width: min(680px, calc(100vw - 32px)); max-height: 85vh; padding: 0; border: 0; border-radius: 12px; box-shadow: 0 20px 50px rgba(0,0,0,.3); color: var(--fvr-text); }
+.fvr-terms-dialog[open] { display: flex; flex-direction: column; }
+.fvr-terms-dialog::backdrop { background: rgba(15,23,42,.5); }
+.fvr-terms-head, .fvr-terms-foot { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; border-bottom: 1px solid var(--fvr-border); }
+.fvr-terms-foot { border-bottom: 0; border-top: 1px solid var(--fvr-border); justify-content: flex-end; }
+.fvr-terms-body { padding: 8px 20px; overflow-y: auto; font-size: 15px; line-height: 1.55; }
+.fvr-terms-close { border: 0; background: none; font-size: 26px; line-height: 1; cursor: pointer; color: var(--fvr-muted); }
+.fvr-terms-accept { border: 0; border-radius: 8px; background: var(--fvr-accent); color: #fff; padding: .6rem 1.2rem; font: inherit; font-weight: 600; cursor: pointer; }

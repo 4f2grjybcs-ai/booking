@@ -35,6 +35,8 @@
     more: '<circle cx="12" cy="5.5" r="1.3"/><circle cx="12" cy="12" r="1.3"/><circle cx="12" cy="18.5" r="1.3"/>',
     pilot: '<circle cx="12" cy="7.5" r="3.5"/><path d="M5 20c.8-4 3.6-6 7-6s6.2 2 7 6"/>',
     block: '<circle cx="12" cy="12" r="8.5"/><path d="M6 6l12 12"/>',
+    bell: '<path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15z"/><path d="M10 20a2 2 0 0 0 4 0"/>',
+    belloff: '<path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15z"/><path d="M10 20a2 2 0 0 0 4 0"/><path d="M4 4l16 16"/>',
     cal: '<rect x="3.5" y="5" width="17" height="15" rx="2"/><path d="M3.5 10h17M8 3v4M16 3v4"/>',
     sms: '<path d="M4 5h16v11H9l-5 4z"/><path d="M8 10.5h.01M12 10.5h.01M16 10.5h.01"/>',
     wa: '<path d="M4 20l1.3-4A8 8 0 1 1 8 18.7z"/><path d="M9 9.5c.3 2.3 2.2 4.2 4.5 4.5l1-1.2 2 .8-.3 1.6c-3.6.4-7.4-3.4-7-7L10.8 8l.8 2z"/>'
@@ -55,7 +57,8 @@
   var state = {
     view: store('view') || (mq.matches ? (C.canEdit ? 'list' : 'day') : 'week'),
     mine: !!C.me && store('mine') !== '0',
-    anchor: C.today,
+    anchor: C.start || C.today,
+    pushOn: false,
     showCancelled: store('cancelled') === '1',
     sidebar: !mq.matches && store('sidebar') !== '0',
     data: null,
@@ -351,6 +354,7 @@
         '<span class="g-spacer"></span>' +
         (state.anchor !== C.today ? '<button type="button" class="g-today" data-nav="0" aria-label="Aujourd\'hui"><span class="g-today-short">' + toDate(C.today).getDate() + '</span></button>' : '') +
         (C.canEdit ? '<button type="button" class="g-icon-btn" data-search aria-label="Rechercher">' + icon('search') + '</button>' : '') +
+        (C.push ? '<button type="button" class="g-icon-btn g-bell' + (state.pushOn ? ' on' : '') + '" data-push aria-label="Notifications">' + icon(state.pushOn ? 'bell' : 'belloff') + '</button>' : '') +
         viewMenu(true) + '</header>';
     }
     return '<header class="g-top"><div class="g-progress"></div>' +
@@ -363,6 +367,7 @@
       '<span class="g-spacer"></span>' +
       (C.canEdit ? '' : '<span class="g-ro">Lecture seule</span>') +
       (C.canEdit || !mq.matches ? '<button type="button" class="g-icon-btn" data-search aria-label="Rechercher">' + icon('search') + '</button>' : '') +
+      (C.push ? '<button type="button" class="g-icon-btn g-bell' + (state.pushOn ? ' on' : '') + '" data-push aria-label="Notifications">' + icon(state.pushOn ? 'bell' : 'belloff') + '</button>' : '') +
       viewMenu(false) + '</header>';
   }
 
@@ -1125,6 +1130,108 @@
     if (isNew) setTimeout(function () { form.title.focus(); }, 50);
   }
 
+  // ---------- Notifications sur le téléphone (pilotes) ----------
+  function b64ToBytes(b64) {
+    var s = atob(b64.replace(/-/g, '+').replace(/_/g, '/') + '==='.slice((b64.length + 3) % 4));
+    var out = new Uint8Array(s.length);
+    for (var i = 0; i < s.length; i++) out[i] = s.charCodeAt(i);
+    return out;
+  }
+  function pushSupported() { return 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window; }
+  function isIOS() { return /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1); }
+  function isStandalone() { return window.matchMedia('(display-mode: standalone)').matches || navigator.standalone === true; }
+  function getRegistration() {
+    return navigator.serviceWorker.getRegistration(C.push.scope).then(function (reg) {
+      return reg || navigator.serviceWorker.register(C.push.sw, { scope: C.push.scope });
+    });
+  }
+  function activeRegistration() {
+    return getRegistration().then(function (reg) {
+      if (reg.active) return reg;
+      return new Promise(function (resolve) {
+        var w = reg.installing || reg.waiting;
+        if (!w) return resolve(reg);
+        w.addEventListener('statechange', function () { if (w.state === 'activated') resolve(reg); });
+      });
+    });
+  }
+  function currentSubscription() {
+    if (!C.push || !pushSupported()) return Promise.resolve(null);
+    return navigator.serviceWorker.getRegistration(C.push.scope).then(function (reg) {
+      return reg ? reg.pushManager.getSubscription() : null;
+    }).catch(function () { return null; });
+  }
+  function subscribePush() {
+    return Notification.requestPermission().then(function (perm) {
+      if (perm !== 'granted') throw new Error('Autorisation refusée. Active les notifications pour ce site dans les réglages du téléphone.');
+      return activeRegistration();
+    }).then(function (reg) {
+      return reg.pushManager.getSubscription().then(function (sub) {
+        return sub || reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: b64ToBytes(C.push.key) });
+      });
+    }).then(function (sub) {
+      return api('pilot/push', null, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(sub.toJSON()) });
+    });
+  }
+  function unsubscribePush() {
+    return currentSubscription().then(function (sub) {
+      if (!sub) return;
+      var endpoint = sub.endpoint;
+      return sub.unsubscribe().then(function () {
+        return api('pilot/push', null, { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ endpoint: endpoint }) });
+      });
+    });
+  }
+
+  function openPush() {
+    var head = '<div class="g-sheet-bar"><button type="button" class="g-icon-btn" data-close aria-label="Fermer">' + icon('close') + '</button>' +
+      '<span class="g-sheet-title">Notifications</span></div><div class="g-sheet-body g-push">';
+    var what = '<p class="g-muted">Tu reçois une notification sur ce téléphone quand un vol t\'est <b>attribué</b>, <b>retiré</b>, <b>déplacé</b> ou <b>annulé</b>.</p>';
+    if (!pushSupported()) {
+      var help = isIOS() && !isStandalone()
+        ? '<ol class="g-steps"><li>Touche le bouton <b>Partager</b> (carré avec une flèche) de Safari.</li><li>Choisis <b>« Sur l\'écran d\'accueil »</b>.</li>' +
+          '<li>Ouvre le planning depuis la nouvelle icône, puis touche 🔔 à nouveau.</li></ol><p class="g-muted">Sur iPhone, les notifications fonctionnent quand le planning est ajouté à l\'écran d\'accueil (iOS 16.4 ou plus récent).</p>'
+        : '<p>Ce navigateur ne permet pas les notifications. Utilise Chrome, Firefox, Edge ou Safari à jour.</p>';
+      return openSheet(head + what + help + '</div>', 'g-sheet-details');
+    }
+    var bg = openSheet(head + what + '<div class="g-push-state"><p class="g-muted">Vérification…</p></div><p class="g-error" hidden></p></div>', 'g-sheet-details');
+    var box = bg.querySelector('.g-push-state'), errEl = bg.querySelector('.g-error');
+    function fail(err) { errEl.textContent = err.message || String(err); errEl.hidden = false; }
+    function show() {
+      currentSubscription().then(function (sub) {
+        state.pushOn = !!sub;
+        render();
+        if (Notification.permission === 'denied') {
+          box.innerHTML = '<p>Les notifications sont <b>bloquées</b> pour ce site. Réactive-les dans les réglages du navigateur ou du téléphone, puis reviens ici.</p>';
+        } else if (sub) {
+          box.innerHTML = '<p class="g-push-ok">' + icon('bell') + ' Activées sur ce téléphone</p>' +
+            '<div class="g-push-actions"><button type="button" class="g-save" data-push-test>Envoyer un test</button>' +
+            '<button type="button" class="g-chipbtn" data-push-off>Désactiver</button></div>';
+        } else {
+          box.innerHTML = '<button type="button" class="g-save g-push-on" data-push-on>' + icon('bell') + ' Activer les notifications</button>';
+        }
+      });
+    }
+    bg.addEventListener('click', function (e) {
+      var b = e.target.closest('[data-push-on], [data-push-off], [data-push-test]');
+      if (!b) return;
+      errEl.hidden = true;
+      b.disabled = true;
+      if (b.hasAttribute('data-push-on')) {
+        subscribePush().then(function () {
+          show();
+          return api('pilot/push-test', null, { method: 'POST' }).catch(function () {});
+        }).catch(function (err) { b.disabled = false; fail(err); });
+      } else if (b.hasAttribute('data-push-off')) {
+        unsubscribePush().then(function () { show(); toast('Notifications désactivées'); }).catch(function (err) { b.disabled = false; fail(err); });
+      } else {
+        api('pilot/push-test', null, { method: 'POST' }).then(function () { b.disabled = false; toast('Notification de test envoyée'); })
+          .catch(function (err) { b.disabled = false; fail(err); });
+      }
+    });
+    show();
+  }
+
   // ---------- Recherche ----------
   function openSearch() {
     var bg = openSheet('<div class="g-sheet-bar g-searchbar"><button type="button" class="g-icon-btn" data-close aria-label="Fermer">' + icon('back') + '</button>' +
@@ -1198,6 +1305,7 @@
     if (t.closest('[data-search]')) return openSearch();
     if (t.closest('[data-new]')) return newBooking();
     if (t.closest('[data-create]')) return openCreate();
+    if (t.closest('[data-push]')) return openPush();
     if (t.closest('[data-absence]')) return declareAbsence(state.view === 'day' || state.view === 'four' ? state.anchor : C.today);
     if ((el = t.closest('[data-free-time]'))) return newBooking(el.getAttribute('data-free-date'), el.getAttribute('data-free-time'));
     if ((el = t.closest('[data-event]'))) return openEvent(findEvent(+el.getAttribute('data-event')));
@@ -1349,4 +1457,5 @@
   mq.addEventListener && mq.addEventListener('change', function () { state.sidebar = !mq.matches && store('sidebar') !== '0'; render(); });
 
   load();
+  if (C.push) currentSubscription().then(function (sub) { if (!!sub !== state.pushOn) { state.pushOn = !!sub; if (state.data) render(); } });
 })();

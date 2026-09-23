@@ -173,8 +173,10 @@ function fvr_update_booking_pilots(int $bookingId, $requested, bool $isNew): voi
 function fvr_delete_booking(int $id): void
 {
     global $wpdb;
+    $before = fvr_booking_snapshot($id);
     $wpdb->delete(fvr_table('assign'), ['booking_id' => $id]);
     $wpdb->delete(fvr_table('bookings'), ['id' => $id]);
+    fvr_notify_changes($before, null);
 }
 
 function fvr_pilot_names(array $seats, array $pilotsById): array

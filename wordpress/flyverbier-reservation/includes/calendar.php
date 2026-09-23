@@ -238,6 +238,12 @@ function fvr_calendar_config(bool $canEdit, string $token = '', ?array $pilot = 
 {
     return [
         'me'       => $pilot ? ['id' => (int) $pilot['id'], 'name' => $pilot['name']] : null,
+        'start'    => isset($_GET['d']) && fvr_valid_date($_GET['d']) ? $_GET['d'] : '',
+        'push'     => $pilot && function_exists('fvr_push_available') && fvr_push_available() ? [
+            'key'   => fvr_vapid()['public'],
+            'sw'    => add_query_arg('fvr_sw', '1', home_url('/')),
+            'scope' => home_url('/?fvr_planning='),
+        ] : null,
         'api'      => esc_url_raw(rest_url('fvr/v1/')),
         'token'    => $token,
         'nonce'    => $canEdit ? wp_create_nonce('wp_rest') : '',
@@ -288,6 +294,9 @@ add_action('template_redirect', function () {
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Planning">
 <title><?php echo esc_html($pilot ? 'Planning de ' . $pilot['name'] : 'Planning · ' . $site); ?></title>
+<?php if ($ctx): ?><link rel="manifest" href="<?php echo esc_url(add_query_arg('fvr_manifest', $token, home_url('/'))); ?>"><?php endif; ?>
+<link rel="apple-touch-icon" href="<?php echo esc_url(FVR_URL . 'assets/icon-192.png'); ?>">
+<link rel="icon" href="<?php echo esc_url(FVR_URL . 'assets/icon-192.png'); ?>">
 <link rel="stylesheet" href="<?php echo esc_url(FVR_URL . 'assets/calendar.css?ver=' . FVR_VERSION); ?>">
 </head>
 <body class="fvr-cal-page">

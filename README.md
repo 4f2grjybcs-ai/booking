@@ -10,6 +10,18 @@ Le dossier `wordpress/flyverbier-reservation/` est une extension WordPress.
 4. Créer une page « Réserver » contenant le shortcode `[reservation_parapente]`.
 5. Vérifier **Réglages → Général → Fuseau horaire** = Zurich.
 
+### Notifications, e-mails, conditions générales (v1.9)
+
+- **Notifications sur le téléphone des pilotes** (Web Push, gratuit) : bouton 🔔 dans le planning du pilote ;
+  prévenu quand un vol lui est attribué, retiré, déplacé ou annulé. Sur iPhone : ajouter le planning à l'écran
+  d'accueil (iOS 16.4+). Chiffrement RFC 8291 / VAPID RFC 8292 avec OpenSSL, sans bibliothèque externe.
+- **Confirmation immédiate** des réservations en ligne (réglable) ; e-mail « Votre vol est confirmé » au client.
+- **E-mails** HTML + texte, expéditeur « Fly Verbier » (plus « WordPress »), adresse de réponse au choix,
+  e-mail complet à l'administrateur (client, téléphone, poids, pilotes, lien vers l'agenda), e-mail de test.
+- **Textes modifiables** avec mots-clés : {prenom} {nom} {date} {heure} {vol} {passagers} {total} {reference}…
+- **Conditions générales** : éditeur dans les Paramètres, case obligatoire sur le formulaire (lecture dans une
+  fenêtre), jointes à l'e-mail de confirmation, shortcode `[conditions_parapente]`.
+
 ### Absences des pilotes (v1.8)
 
 - Bouton **« Absence »** dans l'agenda personnel de chaque pilote : du … au …, journée entière ou horaires, motif.

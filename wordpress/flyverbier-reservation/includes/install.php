@@ -106,6 +106,21 @@ function fvr_install(): void
   KEY pilot_id (pilot_id)
 ) $charset;");
 
+    // Appareils des pilotes abonnés aux notifications
+    dbDelta("CREATE TABLE " . fvr_table('push') . " (
+  id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+  pilot_id bigint(20) unsigned NOT NULL,
+  endpoint text NOT NULL,
+  endpoint_hash char(64) NOT NULL,
+  p256dh varchar(200) NOT NULL,
+  auth varchar(100) NOT NULL,
+  created_at datetime NOT NULL,
+  last_ok datetime DEFAULT NULL,
+  PRIMARY KEY  (id),
+  UNIQUE KEY endpoint_hash (endpoint_hash),
+  KEY pilot_id (pilot_id)
+) $charset;");
+
     // Données de départ, uniquement lors de la première installation
     if (!(int) $wpdb->get_var('SELECT COUNT(*) FROM ' . fvr_table('flights'))) {
         $flights = [
@@ -126,6 +141,12 @@ function fvr_install(): void
     }
 
     add_option('fvr_settings', fvr_default_settings());
+    // Ancien texte « nous vous contacterons pour confirmer » : remplacé par la confirmation immédiate
+    $saved = get_option('fvr_settings');
+    if (is_array($saved) && isset($saved['client_message']) && strpos($saved['client_message'], 'Nous vous contacterons pour confirmer') !== false) {
+        unset($saved['client_message']);
+        update_option('fvr_settings', $saved);
+    }
     update_option('fvr_db_version', FVR_VERSION);
 }
 

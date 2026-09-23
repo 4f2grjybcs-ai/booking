@@ -41,3 +41,8 @@
 .fvr-admin .fvr-panel input[type=color] { width: 60px; height: 32px; padding: 0 2px; }
 .fvr-admin-link { border-left: 6px solid #d63638; }
 .fvr-quick { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-bottom: 10px; grid-column: 1 / -1; }
+.fvr-push-state { background: #f0f6fc; border-radius: 4px; padding: 6px 10px; }
+.fvr-admin .fvr-panel h3 { margin: 18px 0 8px; font-size: 14px; }
+.fvr-big { align-items: flex-start !important; background: #f0f6fc; padding: 10px 12px; border-radius: 4px; }
+.fvr-big input { margin-top: 3px; }
+.fvr-tags code { font-size: 12px; }

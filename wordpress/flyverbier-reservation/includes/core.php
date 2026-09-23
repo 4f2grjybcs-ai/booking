@@ -19,8 +19,7 @@ function fvr_default_settings(): array
         'ref_prefix'        => 'FV',
         'max_days_ahead'    => 365,
         'booking_until'     => '',
-        'client_message'    => "Merci pour votre demande de réservation. Nous vous contacterons pour confirmer votre vol selon les conditions météo.",
-    ];
+    ] + fvr_mail_defaults();
 }
 
 function fvr_settings(): array
@@ -162,6 +161,7 @@ function fvr_create_booking(array $in)
     if (!is_email($email)) $errors[] = 'E-mail invalide.';
     if (!preg_match('/^[0-9 +().\-]{6,25}$/', $phone)) $errors[] = 'Téléphone invalide.';
     if (empty($in['accept'])) $errors[] = 'Veuillez accepter les conditions.';
+    if (fvr_terms_html() !== '' && empty($in['terms'])) $errors[] = 'Veuillez accepter les conditions générales.';
 
     $flight = $wpdb->get_row($wpdb->prepare('SELECT * FROM ' . fvr_table('flights') . ' WHERE id = %d AND active = 1',
         (int) ($in['flight_id'] ?? 0)), ARRAY_A);
@@ -193,19 +193,21 @@ function fvr_create_booking(array $in)
         'reference' => $ref, 'date' => $date, 'time' => $time, 'flight_id' => $flight['id'],
         'flight_name' => $flight['name'], 'price' => $total, 'passengers' => $pax, 'name' => $name,
         'email' => $email, 'phone' => $phone, 'weights' => $weights, 'message' => $message,
-        'status' => 'pending', 'admin_notes' => '', 'created_at' => fvr_now(), 'updated_at' => fvr_now(),
+        // Confirmation immédiate (réglable) : le client clique, c'est réservé
+        'status' => fvr_settings()['auto_confirm'] ? 'confirmed' : 'pending', 'admin_notes' => '', 'created_at' => fvr_now(), 'updated_at' => fvr_now(),
     ]);
     $bookingId = (int) $wpdb->insert_id;
     if ($ok) {
         fvr_update_booking_pilots($bookingId, null, true);
+        fvr_notify_changes(null, fvr_booking_snapshot($bookingId));
     }
     fvr_lock(false);
     if (!$ok) {
         return new WP_Error('db', 'Erreur serveur, veuillez réessayer.', ['status' => 500]);
     }
 
-    fvr_send_emails($ref, $flight['name'], $date, $time, $pax, $total, $name, $email, $phone, $weights, $message);
-    return ['reference' => $ref, 'total' => $total];
+    fvr_send_booking_emails($bookingId);
+    return ['reference' => $ref, 'total' => $total, 'message' => fvr_screen_message($bookingId)];
 }
 
 /**
@@ -242,8 +244,10 @@ function fvr_save_booking(array $p, int $id = 0)
         'admin_notes' => sanitize_textarea_field($p['admin_notes'] ?? ''), 'updated_at' => fvr_now(),
     ];
     if ($id) {
+        $before = fvr_booking_snapshot($id);
         $wpdb->update(fvr_table('bookings'), $data, ['id' => $id]);
         fvr_update_booking_pilots($id, $p['pilots'] ?? null, false);
+        fvr_notify_changes($before, fvr_booking_snapshot($id));
         return $id;
     }
     $data['reference'] = fvr_generate_reference();
@@ -253,6 +257,7 @@ function fvr_save_booking(array $p, int $id = 0)
     }
     $id = (int) $wpdb->insert_id;
     fvr_update_booking_pilots($id, $p['pilots'] ?? null, true);
+    fvr_notify_changes(null, fvr_booking_snapshot($id));
     return $id;
 }
 
@@ -268,30 +273,6 @@ function fvr_time_choices(string $current = ''): array
         sort($list);
     }
     return $list;
-}
-
-function fvr_send_emails($ref, $flightName, $date, $time, $pax, $total, $name, $email, $phone, $weights, $message): void
-{
-    $s = fvr_settings();
-    $site = wp_specialchars_decode(get_bloginfo('name'), ENT_QUOTES);
-    $summary = "Référence : $ref\n"
-        . "Vol : $flightName\n"
-        . 'Date : ' . fvr_format_date($date) . " à $time\n"
-        . "Passagers : $pax\n"
-        . 'Total : CHF ' . number_format($total, 2, '.', "'") . "\n"
-        . "Nom : $name\nE-mail : $email\nTéléphone : $phone\n"
-        . ($weights ? "Poids : $weights\n" : '')
-        . ($message ? "\nMessage :\n$message\n" : '');
-
-    if ($s['admin_email']) {
-        wp_mail($s['admin_email'], "[$site] Nouvelle réservation $ref",
-            "Nouvelle réservation :\n\n$summary\n" . admin_url('admin.php?page=fvr'),
-            ['Reply-To: ' . $name . ' <' . $email . '>']);
-    }
-    if ($s['send_client_email']) {
-        wp_mail($email, "$site - Demande de réservation $ref",
-            "Bonjour $name,\n\n" . $s['client_message'] . "\n\n$summary\n$site");
-    }
 }
 
 function fvr_format_date(string $date): string

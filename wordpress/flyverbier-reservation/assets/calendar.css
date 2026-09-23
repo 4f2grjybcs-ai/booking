@@ -470,3 +470,12 @@ body.fvr-cal-page .g-app { height: 100vh; height: 100dvh; }
 @media (min-width: 761px) { .g-fab-abs { display: none !important; } }
 .g-form .g-lbl input { flex: none !important; width: 100% !important; }
 .fvr-cal .g-fab-abs { color: #6a1b9a; }
+
+/* ---------- Notifications ---------- */
+.g-bell { color: var(--g-muted); }
+.g-bell.on { color: var(--g-blue); }
+.g-push p { margin: 0 0 12px; line-height: 1.5; }
+.g-push-on { display: inline-flex; align-items: center; gap: 8px; padding: 12px 20px; font-size: 15px; }
+.g-push-ok { display: flex; align-items: center; gap: 8px; color: #137333; font-weight: 600; }
+.g-push-actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.g-steps { margin: 0 0 12px; padding-left: 20px; line-height: 1.6; }

@@ -422,3 +422,34 @@ body.fvr-cal-page .g-app { height: 100vh; height: 100dvh; }
 
 .g-ghost.side { padding: 0; }
 .g-ghost.side b { font-size: 12px; }
+
+/* ---------- Vue 4 jours : cases plus grandes et plus lisibles ---------- */
+.g-four .g-dnum { font-size: 28px; }
+.g-four .g-daypax { font-size: 12px; }
+.g-four .g-ev { font-size: 13px; line-height: 1.35; padding: 5px 8px; border-radius: 8px; }
+.g-four .g-ev b { font-size: 15px; font-weight: 600; }
+.g-four .g-ev-pilots .g-ic { width: 15px; height: 15px; }
+.g-four .g-ev .g-tbd { font-size: 12px; }
+.g-four .g-evt { font-size: 13px; padding: 5px 8px; }
+.g-four .g-evt b { font-size: 14px; }
+.g-four .g-evt span { font-size: 12px; }
+.g-four .g-ghost b { font-size: 20px; }
+.g-four .g-ghost span { font-size: 13px; }
+.g-four .g-ghost.side { width: 44px !important; }
+.g-four .g-ghost.side b { font-size: 15px; }
+.g-four .g-body .g-gutter span { font-size: 12px; }
+.g-four .g-evt-chip { font-size: 13px; padding: 3px 8px; }
+@media (max-width: 760px) {
+  .g-grid.g-four { --gutter: 42px; }
+  .g-four .g-body .g-gutter span { font-size: 10px; right: 4px; }
+  .g-four .g-ev-pilots, .g-four .g-evt span { display: none !important; }
+  .g-four .g-evt { padding: 3px 4px; font-size: 11px; }
+  .g-four .g-evt b { font-size: 11px; white-space: normal; }
+  .g-four .g-dnum { font-size: 20px; }
+  .g-grid.g-four .g-ev span:not(:first-of-type) { display: block; }
+  .g-four .g-ev { font-size: 11px; padding: 3px 4px; }
+  .g-four .g-ev b { font-size: 12px; }
+  .g-four .g-ev .g-ev-flight { display: none; }
+  .g-four .g-ghost.side { width: 26px !important; }
+  .g-four .g-ghost.side b { font-size: 12px; }
+}

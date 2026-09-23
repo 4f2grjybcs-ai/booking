@@ -10,7 +10,8 @@
   var DAYS_LONG = ['dimanche', 'lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi'];
   var MONTHS = ['janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juillet', 'août',
     'septembre', 'octobre', 'novembre', 'décembre'];
-  var VIEWS = { day: 'Jour', week: 'Semaine', month: 'Mois', list: 'Planning' };
+  var VIEWS = { day: 'Jour', four: '4 jours', week: 'Semaine', month: 'Mois', list: 'Planning' };
+  var VIEW_KEYS = { day: 'J', four: '4', week: 'S', month: 'M', list: 'P' };
   var ICON = {
     menu: '<path d="M3 6h18M3 12h18M3 18h18"/>',
     prev: '<path d="M15 5l-7 7 7 7"/>',
@@ -84,6 +85,7 @@
   function range() {
     if (state.view === 'day') return [state.anchor, state.anchor];
     if (state.view === 'week') { var s = startOfWeek(state.anchor); return [s, addDays(s, 6)]; }
+    if (state.view === 'four') return [state.anchor, addDays(state.anchor, 3)];
     if (state.view === 'list') return [state.anchor, addDays(state.anchor, 30)];
     return monthGrid(state.anchor);
   }
@@ -330,7 +332,7 @@
       (iconOnly ? icon('more') : VIEWS[state.view] + icon('chevron')) + '</button>' +
       '<div class="g-menu" hidden>' +
       Object.keys(VIEWS).map(function (v) {
-        return '<button type="button" data-view="' + v + '"' + (v === state.view ? ' class="on"' : '') + '>' + VIEWS[v] + '<kbd>' + { day: 'J', week: 'S', month: 'M', list: 'P' }[v] + '</kbd></button>';
+        return '<button type="button" data-view="' + v + '"' + (v === state.view ? ' class="on"' : '') + '>' + VIEWS[v] + '<kbd>' + VIEW_KEYS[v] + '</kbd></button>';
       }).join('') +
       '<hr><label><input type="checkbox" data-cancelled' + (state.showCancelled ? ' checked' : '') + '> Afficher les annulées</label>' +
       (C.icsUrl ? '<a href="' + esc(C.icsUrl.replace(/^https?:/, 'webcal:')) + '">' + icon('cal') + ' Ajouter à mon agenda</a>' : '') +
@@ -405,7 +407,7 @@
     return renderGrid(days);
   }
 
-  function hourHeight() { return state.view === 'day' ? 64 : 52; }
+  function hourHeight() { return state.view === 'four' ? 88 : state.view === 'day' ? 64 : 52; }
 
   // ---------- Vue jour / semaine : grille horaire ----------
   // ---------- Événements et places libres ----------
@@ -463,7 +465,7 @@
 
   function renderGrid(days) {
     var hr = hourRange(), H = hourHeight(), per = byDate(), blocked = blockedMap(), slots = activeSlots();
-    var h = '<div class="g-grid' + (days.length === 1 ? ' g-oneday' : '') + '" style="--hour-h:' + H + 'px;--days:' + days.length + '">';
+    var h = '<div class="g-grid' + (days.length === 1 ? ' g-oneday' : '') + (state.view === 'four' ? ' g-four' : '') + '" style="--hour-h:' + H + 'px;--days:' + days.length + '">';
     h += '<div class="g-grid-head"><div class="g-gutter"></div>';
     days.forEach(function (d) {
       var dt = toDate(d), list = per[d] || [];
@@ -509,8 +511,12 @@
       var main = items.filter(function (it) { return it.kind !== 'f'; });
       var ghosts = items.filter(function (it) { return it.kind === 'f'; });
       layout(main);
-      ghosts.forEach(function (g) {
+      var narrow = state.view === 'four' && mq.matches;
+      ghosts = ghosts.filter(function (g) {
         g.side = main.some(function (m) { return m.s < g.e && m.e > g.s; });
+        return !(narrow && g.side); // 4 jours sur téléphone : pas de pastille latérale, place aux vols
+      });
+      ghosts.forEach(function (g) {
         if (g.side) main.forEach(function (m) { if (m.s < g.e && m.e > g.s) m.reserve = true; });
       });
       main.concat(ghosts).forEach(function (it) {
@@ -523,7 +529,7 @@
             '<b>+' + (it.side ? '' : ' ') + it.free + '</b>' + (it.side ? '' : '<span>libre' + (it.free > 1 ? 's' : '') + '</span>') + '</button>';
           return;
         }
-        var R = it.reserve ? '38px' : '0px', w = 1 / it.n;
+        var R = !it.reserve ? '0px' : state.view === 'four' ? (mq.matches ? '30px' : '48px') : '38px', w = 1 / it.n;
         pos = ' style="top:' + top + 'px;height:' + height + 'px;left:calc((100% - ' + R + ') * ' + (it.col * w) + ' + 1px);width:calc((100% - ' + R + ') * ' + w + ' - 4px)"';
         if (it.kind === 'e') {
           var e = it.ev;
@@ -1073,6 +1079,7 @@
     if (n === 0) return C.today;
     if (state.view === 'day') return addDays(state.anchor, n);
     if (state.view === 'week') return addDays(state.anchor, 7 * n);
+    if (state.view === 'four') return addDays(state.anchor, 4 * n);
     if (state.view === 'list') return addDays(state.anchor, 30 * n);
     var d = toDate(state.anchor);
     return toStr(new Date(d.getFullYear(), d.getMonth() + n, 1, 12));
@@ -1148,6 +1155,7 @@
     if (state.sheet || /INPUT|TEXTAREA|SELECT/.test((e.target.tagName || '')) || e.metaKey || e.ctrlKey || e.altKey) return;
     var k = e.key.toLowerCase();
     if (k === 'j') setView('day');
+    else if (k === '4' || k === 'x') setView('four');
     else if (k === 's') setView('week');
     else if (k === 'm') setView('month');
     else if (k === 'p') setView('list');

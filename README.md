@@ -10,6 +10,10 @@ Le dossier `wordpress/flyverbier-reservation/` est une extension WordPress.
 4. Créer une page « Réserver » contenant le shortcode `[reservation_parapente]`.
 5. Vérifier **Réglages → Général → Fuseau horaire** = Zurich.
 
+### Vue 4 jours (v1.6)
+
+- Vue « 4 jours » (menu des vues ou touche 4) : colonnes larges, heures plus hautes, texte plus grand.
+
 ### Événements, places libres, fluidité (v1.5)
 
 - **Événements / blocages** (bouton « Créer » → Événement) : météo, compétition, pilote absent, groupe privé…

@@ -32,13 +32,48 @@ function fvr_valid_token($token): bool
 /**
  * Jeton de lien : ['pilot' => null] pour le lien d'équipe, ['pilot' => [...]] pour un lien personnel, null si invalide.
  */
+// Lien administrateur secret : agenda modifiable sans connexion WordPress (à ne pas partager)
+function fvr_admin_token(): string
+{
+    $token = get_option('fvr_admin_token');
+    if (!$token) {
+        $token = fvr_regenerate_admin_token();
+    }
+    return $token;
+}
+
+function fvr_regenerate_admin_token(): string
+{
+    $token = wp_generate_password(40, false, false);
+    update_option('fvr_admin_token', $token, false);
+    return $token;
+}
+
+function fvr_admin_planning_url(): string
+{
+    return add_query_arg('fvr_planning', fvr_admin_token(), home_url('/'));
+}
+
 function fvr_token_context($token): ?array
 {
+    if (is_string($token) && strlen($token) === 40 && hash_equals(fvr_admin_token(), $token)) {
+        return ['pilot' => null, 'admin' => true];
+    }
     if (fvr_valid_token($token)) {
         return ['pilot' => null];
     }
     $pilot = fvr_pilot_by_token($token);
     return $pilot ? ['pilot' => $pilot] : null;
+}
+
+// Modification : administrateur connecté à WordPress, ou lien administrateur secret
+function fvr_can_edit_calendar(WP_REST_Request $req): bool
+{
+    if (current_user_can(fvr_cap())) {
+        return true;
+    }
+    $ctx = fvr_token_context($req->get_param('token'));
+    return !empty($ctx['admin']);
 }
 
 function fvr_can_view_calendar(WP_REST_Request $req): bool
@@ -157,7 +192,7 @@ add_action('rest_api_init', function () {
                 || strtotime($to) - strtotime($from) > 100 * DAY_IN_SECONDS) {
                 return new WP_Error('invalid', 'Période invalide.', ['status' => 400]);
             }
-            $res = rest_ensure_response(fvr_calendar_data($from, $to, current_user_can(fvr_cap())));
+            $res = rest_ensure_response(fvr_calendar_data($from, $to, fvr_can_edit_calendar($req)));
             $res->header('Cache-Control', 'no-store');
             $res->header('X-Robots-Tag', 'noindex');
             return $res;
@@ -168,15 +203,13 @@ add_action('rest_api_init', function () {
         'methods'             => 'GET',
         'permission_callback' => 'fvr_can_view_calendar',
         'callback'            => function (WP_REST_Request $req) {
-            $res = rest_ensure_response(['bookings' => fvr_search_bookings((string) $req->get_param('q'), current_user_can(fvr_cap()))]);
+            $res = rest_ensure_response(['bookings' => fvr_search_bookings((string) $req->get_param('q'), fvr_can_edit_calendar($req))]);
             $res->header('Cache-Control', 'no-store');
             return $res;
         },
     ]);
 
-    $adminOnly = function () {
-        return current_user_can(fvr_cap());
-    };
+    $adminOnly = 'fvr_can_edit_calendar';
 
     register_rest_route('fvr/v1', '/admin/booking', [
         'methods'             => 'POST',
@@ -230,11 +263,11 @@ add_action('template_redirect', function () {
         return;
     }
     $token = (string) wp_unslash($_GET['fvr_planning']);
-    $canEdit = current_user_can(fvr_cap());
+    $ctx = fvr_token_context($token);
+    $canEdit = current_user_can(fvr_cap()) || !empty($ctx['admin']);
     nocache_headers();
     header('X-Robots-Tag: noindex, nofollow');
     header('Referrer-Policy: no-referrer');
-    $ctx = fvr_token_context($token);
     if (!$canEdit && !$ctx) {
         status_header(403);
         wp_die('Ce lien de planning n\'est pas (ou plus) valide. Demandez le nouveau lien à l\'administrateur.', 'Lien invalide', ['response' => 403]);
@@ -269,7 +302,7 @@ add_action('template_redirect', function () {
 add_action('admin_menu', function () {
     add_submenu_page('fvr', 'Calendrier des réservations', 'Calendrier', fvr_cap(), 'fvr-calendar', function () {
         echo '<div class="wrap"><h1 class="wp-heading-inline">Calendrier</h1> ';
-        echo '<a class="page-title-action" href="' . esc_url(fvr_planning_url()) . '" target="_blank">Ouvrir en plein écran ↗</a>';
+        echo '<a class="page-title-action" href="' . esc_url(fvr_admin_planning_url()) . '" target="_blank">Ouvrir en plein écran ↗</a>';
         echo '<hr class="wp-header-end">';
         echo fvr_calendar_container();
         echo '</div>';

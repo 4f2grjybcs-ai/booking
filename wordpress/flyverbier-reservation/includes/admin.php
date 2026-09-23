@@ -172,6 +172,10 @@ add_action('admin_post_fvr', function () {
             $wpdb->update(fvr_table('pilots'), ['token' => fvr_new_pilot_token()], ['id' => (int) $p['id']]);
             fvr_back(admin_url('admin.php?page=fvr-pilots'), 'Nouveau lien créé pour ce pilote : l\'ancien ne fonctionne plus.');
 
+        case 'regen_admin_token':
+            fvr_regenerate_admin_token();
+            fvr_back($settingsUrl, 'Nouveau lien administrateur créé : l\'ancien ne fonctionne plus. Pensez à remplacer l\'icône sur votre téléphone.');
+
         case 'regen_token':
             fvr_regenerate_planning_token();
             fvr_back($settingsUrl, 'Nouveau lien créé : l\'ancien lien ne fonctionne plus. Envoyez le nouveau à vos pilotes.');
@@ -490,6 +494,19 @@ function fvr_page_settings(): void
         <h2>Afficher le formulaire sur le site</h2>
         <p>Créez une page (ex. « Réserver ») et insérez-y ce code (bloc « Code court » / « Shortcode ») :</p>
         <p><code class="fvr-code">[reservation_parapente]</code></p>
+      </div>
+
+      <div class="fvr-panel fvr-admin-link">
+        <h2>🔒 Votre agenda administrateur (lien secret)</h2>
+        <p>Ce lien ouvre l'agenda <strong>en mode modification, sans connexion WordPress</strong>.
+          Ouvrez-le sur votre téléphone puis « Ajouter à l'écran d'accueil ».
+          <strong>Ne le communiquez à personne</strong> : toute personne qui l'a peut modifier et supprimer des réservations.</p>
+        <p class="fvr-linkrow"><input type="text" class="large-text code" readonly value="<?php echo esc_attr(fvr_admin_planning_url()); ?>" onclick="this.select()">
+          <a class="button button-primary" href="<?php echo esc_url(fvr_admin_planning_url()); ?>" target="_blank">Ouvrir</a></p>
+        <?php echo fvr_form_open('regen_admin_token', 'onsubmit="return confirm(\'L\\\'ancien lien administrateur ne fonctionnera plus. Continuer ?\')"'); ?>
+          <p><button class="button">Générer un nouveau lien administrateur</button>
+          <span class="description">À faire immédiatement si ce lien a été vu par quelqu'un d'autre ou si vous perdez votre téléphone.</span></p>
+        </form>
       </div>
 
       <div class="fvr-panel">

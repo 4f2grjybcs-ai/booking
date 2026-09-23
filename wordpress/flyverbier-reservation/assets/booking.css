@@ -1,0 +1,100 @@
+/* Formulaire de réservation – styles limités à .fvr-booking pour ne pas toucher au thème */
+.fvr-booking {
+  --fvr-text: #1c2430;
+  --fvr-muted: #637083;
+  --fvr-border: #d9dfe7;
+  --fvr-accent: #0a6cbc;
+  --fvr-accent-soft: #e6f1fb;
+  --fvr-danger: #b42318;
+  --fvr-ok: #1a7f37;
+  max-width: 760px;
+  margin: 0 auto;
+  color: var(--fvr-text);
+  font-size: 16px;
+  line-height: 1.5;
+}
+.fvr-booking *, .fvr-booking *::before, .fvr-booking *::after { box-sizing: border-box; }
+.fvr-booking [hidden] { display: none !important; }
+.fvr-booking h3 { font-size: 1.15rem; line-height: 1.3; margin: 0 0 .75rem; }
+.fvr-muted { color: var(--fvr-muted); margin: 0; }
+.fvr-error { color: var(--fvr-danger); font-weight: 600; }
+
+.fvr-booking input[type=text], .fvr-booking input[type=email], .fvr-booking input[type=tel],
+.fvr-booking input[type=date], .fvr-booking select, .fvr-booking textarea {
+  width: 100%;
+  max-width: none;
+  margin: .3rem 0 0;
+  padding: .6rem .7rem;
+  border: 1px solid var(--fvr-border);
+  border-radius: 8px;
+  background: #fff;
+  color: var(--fvr-text);
+  font: inherit;
+  font-weight: 400;
+  height: auto;
+}
+.fvr-booking label { display: block; font-weight: 600; font-size: .95rem; margin: 0; }
+
+.fvr-step {
+  background: #fff;
+  border: 1px solid var(--fvr-border);
+  border-radius: 10px;
+  padding: 1.25rem;
+  margin-bottom: 1rem;
+}
+.fvr-num {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 1.7rem; height: 1.7rem; margin-right: .4rem;
+  border-radius: 50%; background: var(--fvr-accent); color: #fff; font-size: .9rem;
+}
+.fvr-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem; }
+.fvr-block { margin-bottom: 1rem !important; }
+
+.fvr-flights { display: grid; gap: .75rem; }
+.fvr-card {
+  display: flex !important; gap: .75rem; padding: 1rem;
+  border: 1px solid var(--fvr-border); border-radius: 10px;
+  cursor: pointer; font-weight: 400 !important;
+}
+.fvr-card:has(input:checked) { border-color: var(--fvr-accent); background: var(--fvr-accent-soft); }
+.fvr-card input { margin-top: .35rem; flex: none; }
+.fvr-card-body { display: grid; gap: .15rem; flex: 1; }
+.fvr-card-title { font-weight: 700; }
+.fvr-card-meta { color: var(--fvr-muted); font-size: .9rem; }
+.fvr-card-price { font-weight: 700; color: var(--fvr-accent); }
+
+.fvr-slots { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: .5rem; }
+.fvr-slots > p { grid-column: 1 / -1; }
+.fvr-slot { position: relative; cursor: pointer; font-weight: 400 !important; }
+.fvr-slot input { position: absolute; opacity: 0; pointer-events: none; }
+.fvr-slot span {
+  display: grid; text-align: center; padding: .6rem .4rem;
+  border: 1px solid var(--fvr-border); border-radius: 8px; background: #fff;
+}
+.fvr-slot small { color: var(--fvr-muted); }
+.fvr-slot input:checked + span { border-color: var(--fvr-accent); background: var(--fvr-accent); color: #fff; }
+.fvr-slot input:checked + span small { color: #fff; }
+.fvr-slot input:focus-visible + span { outline: 2px solid var(--fvr-accent); outline-offset: 2px; }
+.fvr-slot.fvr-disabled { cursor: not-allowed; opacity: .45; }
+
+.fvr-check { display: flex !important; gap: .6rem; font-weight: 400 !important; align-items: flex-start; }
+.fvr-check input { margin-top: .3rem; flex: none; }
+.fvr-hp { position: absolute !important; left: -9999px; }
+
+.fvr-summary { background: var(--fvr-accent-soft); border-radius: 10px; padding: 1rem 1.25rem; margin-bottom: 1rem; }
+.fvr-total { display: block; font-size: 1.2rem; font-weight: 700; margin-top: .25rem; }
+
+.fvr-submit {
+  display: block; width: 100%;
+  padding: .85rem 1.5rem; border: 0; border-radius: 8px;
+  background: var(--fvr-accent); color: #fff;
+  font: inherit; font-size: 1.05rem; font-weight: 600; cursor: pointer;
+}
+.fvr-submit:disabled { opacity: .6; cursor: wait; }
+
+.fvr-done { border: 1px solid var(--fvr-border); border-radius: 10px; padding: 2rem; text-align: center; background: #fff; }
+.fvr-done h3 { color: var(--fvr-ok); }
+
+@media (max-width: 600px) {
+  .fvr-row { grid-template-columns: 1fr; }
+}

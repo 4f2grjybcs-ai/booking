@@ -1,5 +1,22 @@
 # Système de réservation – Fly Verbier
 
+## Version WordPress (recommandée si vous n'avez accès qu'à WordPress)
+
+Le dossier `wordpress/flyverbier-reservation/` est une extension WordPress.
+
+1. Zipper le dossier `flyverbier-reservation` (ou utiliser le ZIP fourni).
+2. WordPress → **Extensions → Ajouter → Téléverser une extension** → choisir le ZIP → **Installer** → **Activer**.
+3. Un menu **Réservations** apparaît dans l'administration (liste, ajout, paramètres).
+4. Créer une page « Réserver » contenant le shortcode `[reservation_parapente]`.
+5. Vérifier **Réglages → Général → Fuseau horaire** = Zurich.
+
+Les données sont enregistrées dans la base de données WordPress (tables `wp_fvr_*`) ;
+elles sont incluses dans les sauvegardes habituelles du site.
+
+---
+
+## Version autonome (PHP + SQLite, nécessite un accès FTP)
+
 Réservation en ligne de vols en parapente biplace, avec :
 
 - **Page client** (`index.html`) : choix du vol, de la date, de l'horaire et du nombre de passagers,

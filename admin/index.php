@@ -247,12 +247,12 @@ if ($page === 'export') {
     $out = fopen('php://output', 'w');
     fwrite($out, "\xEF\xBB\xBF");
     fputcsv($out, ['Référence', 'Date', 'Heure', 'Vol', 'Passagers', 'Prix CHF', 'Nom', 'E-mail', 'Téléphone',
-                   'Poids', 'Message', 'Statut', 'Notes internes', 'Créée le'], ';');
+                   'Poids', 'Message', 'Statut', 'Notes internes', 'Créée le'], ';', '"', '\\');
     $labels = status_labels();
     foreach (booking_filters() as $b) {
         fputcsv($out, [$b['reference'], $b['date'], $b['time'], $b['flight_name'], $b['passengers'], $b['price'],
                        $b['name'], $b['email'], $b['phone'], $b['weights'], $b['message'],
-                       $labels[$b['status']] ?? $b['status'], $b['admin_notes'], $b['created_at']], ';');
+                       $labels[$b['status']] ?? $b['status'], $b['admin_notes'], $b['created_at']], ';', '"', '\\');
     }
     exit;
 }

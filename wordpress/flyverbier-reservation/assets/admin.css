@@ -1,0 +1,29 @@
+.fvr-admin .fvr-panel { background: #fff; border: 1px solid #c3c4c7; border-radius: 4px; padding: 12px 16px; margin: 16px 0; max-width: 1200px; }
+.fvr-admin .fvr-panel > h2:first-child { margin-top: .3em; }
+.fvr-admin .fvr-panel label { display: block; font-weight: 600; margin-bottom: 10px; }
+.fvr-admin .fvr-panel label input:not([type=checkbox]), .fvr-admin .fvr-panel label select, .fvr-admin .fvr-panel label textarea { display: block; width: 100%; margin-top: 4px; font-weight: 400; }
+.fvr-admin .fvr-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 0 16px; align-items: end; }
+.fvr-admin .fvr-check { display: flex !important; gap: 8px; align-items: center; font-weight: 400 !important; }
+
+.fvr-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin: 16px 0; max-width: 1200px; }
+.fvr-stats div { background: #fff; border: 1px solid #c3c4c7; border-radius: 4px; padding: 10px 14px; }
+.fvr-stats span { color: #646970; }
+.fvr-stats b { display: block; font-size: 22px; line-height: 1.4; }
+
+.fvr-filters { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: flex-end; margin: 0 0 16px; }
+.fvr-filters label { display: flex; flex-direction: column; font-weight: 600; }
+
+.fvr-table td, .fvr-table th { vertical-align: middle; }
+.fvr-table .num { text-align: right; }
+.fvr-table input[type=text], .fvr-table input[type=number], .fvr-table input[type=time] { width: 100%; }
+.fvr-table-narrow { max-width: 600px; }
+.fvr-day td { background: #e6f1fb !important; font-weight: 600; }
+.fvr-w-s { width: 70px; }
+.fvr-w-m { width: 110px; }
+.fvr-nowrap { white-space: nowrap; }
+.fvr-inline { display: inline; }
+.fvr-code { font-size: 15px; padding: 4px 8px; user-select: all; }
+
+.fvr-status-pending { background-color: #fff4e0 !important; }
+.fvr-status-confirmed { background-color: #e3f5e8 !important; }
+.fvr-status-cancelled { background-color: #fdecea !important; }

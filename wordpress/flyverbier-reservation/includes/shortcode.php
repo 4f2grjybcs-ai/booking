@@ -11,6 +11,7 @@ add_shortcode('reservation_parapente', function () {
     wp_localize_script('fvr-booking', 'fvrConfig', [
         'api'     => esc_url_raw(rest_url('fvr/v1/')),
         'maxDays' => (int) fvr_settings()['max_days_ahead'],
+        'maxDate' => fvr_booking_last_day(),
         'today'   => fvr_today(),
     ]);
 

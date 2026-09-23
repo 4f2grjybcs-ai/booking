@@ -40,3 +40,4 @@
 #fvr-seats { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 0 16px; }
 .fvr-admin .fvr-panel input[type=color] { width: 60px; height: 32px; padding: 0 2px; }
 .fvr-admin-link { border-left: 6px solid #d63638; }
+.fvr-quick { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-bottom: 10px; grid-column: 1 / -1; }

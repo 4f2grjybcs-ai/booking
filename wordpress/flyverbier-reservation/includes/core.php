@@ -18,6 +18,7 @@ function fvr_default_settings(): array
         'send_client_email' => 1,
         'ref_prefix'        => 'FV',
         'max_days_ahead'    => 365,
+        'booking_until'     => '',
         'client_message'    => "Merci pour votre demande de réservation. Nous vous contacterons pour confirmer votre vol selon les conditions météo.",
     ];
 }
@@ -64,13 +65,26 @@ function fvr_active_flights(): array
 }
 
 /**
+ * Dernier jour réservable en ligne : « X jours à l'avance », limité par la date de fin choisie.
+ */
+function fvr_booking_last_day(): string
+{
+    $s = fvr_settings();
+    $last = wp_date('Y-m-d', strtotime('+' . (int) $s['max_days_ahead'] . ' days'));
+    if (fvr_valid_date($s['booking_until'] ?? '') && $s['booking_until'] < $last) {
+        $last = $s['booking_until'];
+    }
+    return $last;
+}
+
+/**
  * Places restantes par créneau pour une date. [] si la date est fermée ou hors période.
  */
 function fvr_availability(string $date): array
 {
     global $wpdb;
     $today = fvr_today();
-    $max = wp_date('Y-m-d', strtotime('+' . (int) fvr_settings()['max_days_ahead'] . ' days'));
+    $max = fvr_booking_last_day();
     if ($date < $today || $date > $max) {
         return [];
     }
@@ -89,8 +103,9 @@ function fvr_availability(string $date): array
     $nowTime = current_time('H:i');
     $events = fvr_events_between($date, $date);
     $out = [];
-    foreach ($wpdb->get_results('SELECT time, capacity FROM ' . fvr_table('slots') . ' WHERE active = 1 ORDER BY time', ARRAY_A) as $s) {
-        if ($date === $today && $s['time'] <= $nowTime) {
+    foreach ($wpdb->get_results('SELECT time, capacity, valid_until FROM ' . fvr_table('slots') . ' WHERE active = 1 ORDER BY time', ARRAY_A) as $s) {
+        // Créneau passé, ou disponible seulement jusqu'à une certaine date
+        if (($date === $today && $s['time'] <= $nowTime) || (!empty($s['valid_until']) && $date > $s['valid_until'])) {
             continue;
         }
         // Les événements (météo, pilote absent…) retirent des places libres

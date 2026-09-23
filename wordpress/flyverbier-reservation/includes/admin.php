@@ -119,7 +119,8 @@ add_action('admin_post_fvr', function () {
             if ($exists) {
                 fvr_back($settingsUrl, 'Ce créneau existe déjà.', true);
             }
-            $data = ['time' => $time, 'capacity' => max(0, (int) ($p['capacity'] ?? 0)), 'active' => empty($p['active']) ? 0 : 1];
+            $data = ['time' => $time, 'capacity' => max(0, (int) ($p['capacity'] ?? 0)), 'active' => empty($p['active']) ? 0 : 1,
+                     'valid_until' => fvr_valid_date($p['valid_until'] ?? '') ? $p['valid_until'] : null];
             $id ? $wpdb->update(fvr_table('slots'), $data, ['id' => $id]) : $wpdb->insert(fvr_table('slots'), $data);
             fvr_back($settingsUrl, 'Créneau enregistré.');
 
@@ -180,14 +181,21 @@ add_action('admin_post_fvr', function () {
             fvr_regenerate_planning_token();
             fvr_back($settingsUrl, 'Nouveau lien créé : l\'ancien lien ne fonctionne plus. Envoyez le nouveau à vos pilotes.');
 
+        case 'save_period':
+            $until = (string) ($p['booking_until'] ?? '');
+            update_option('fvr_settings', array_merge(fvr_settings(), [
+                'booking_until'  => fvr_valid_date($until) ? $until : '',
+                'max_days_ahead' => max(1, (int) ($p['max_days_ahead'] ?? 365)),
+            ]));
+            fvr_back($settingsUrl, 'Période de réservation enregistrée.');
+
         case 'save_settings':
-            update_option('fvr_settings', [
+            update_option('fvr_settings', array_merge(fvr_settings(), [
                 'admin_email'       => sanitize_email($p['admin_email'] ?? ''),
                 'send_client_email' => empty($p['send_client_email']) ? 0 : 1,
                 'ref_prefix'        => sanitize_text_field($p['ref_prefix'] ?? 'FV'),
-                'max_days_ahead'    => max(1, (int) ($p['max_days_ahead'] ?? 365)),
                 'client_message'    => sanitize_textarea_field($p['client_message'] ?? ''),
-            ]);
+            ]));
             fvr_back($settingsUrl, 'Réglages enregistrés.');
     }
     fvr_back($listUrl);
@@ -523,6 +531,37 @@ function fvr_page_settings(): void
         </form>
       </div>
 
+      <?php
+        $until = $s['booking_until'];
+        $last = fvr_booking_last_day();
+        $endOfMonth = wp_date('Y-m-t');
+        $endOfNext = wp_date('Y-m-t', strtotime('first day of next month'));
+        $seasonYear = (int) wp_date('Y') + (wp_date('m-d') > '10-31' ? 1 : 0);
+      ?>
+      <div class="fvr-panel">
+        <h2>Période de réservation en ligne</h2>
+        <p>Les clients peuvent réserver jusqu'au <strong><?php echo esc_html(fvr_format_date($last)); ?></strong>.
+          Au-delà, aucun créneau n'est proposé sur le site (vous pouvez toujours ajouter des réservations vous-même).</p>
+        <?php echo fvr_form_open('save_period', 'class="fvr-grid"'); ?>
+          <label>Réservations ouvertes jusqu'au (facultatif)
+            <input type="date" name="booking_until" id="fvr-until" value="<?php echo esc_attr($until); ?>"></label>
+          <label>Et au maximum (jours à l'avance)
+            <input type="number" min="1" name="max_days_ahead" value="<?php echo (int) $s['max_days_ahead']; ?>"></label>
+          <div class="fvr-quick">
+            <button type="button" class="button" data-until="<?php echo esc_attr($endOfMonth); ?>">Fin de ce mois</button>
+            <button type="button" class="button" data-until="<?php echo esc_attr($endOfNext); ?>">Fin du mois prochain</button>
+            <button type="button" class="button" data-until="<?php echo esc_attr($seasonYear . '-10-31'); ?>">Fin de saison (31 oct.)</button>
+            <button type="button" class="button-link" data-until="">Aucune date limite</button>
+          </div>
+          <div><button class="button button-primary">Enregistrer la période</button></div>
+        </form>
+        <script>
+          document.querySelectorAll('[data-until]').forEach(function (b) {
+            b.addEventListener('click', function () { document.getElementById('fvr-until').value = b.getAttribute('data-until'); });
+          });
+        </script>
+      </div>
+
       <div class="fvr-panel">
         <h2>Types de vol</h2>
         <table class="widefat fvr-table">
@@ -558,12 +597,13 @@ function fvr_page_settings(): void
         <h2>Créneaux horaires</h2>
         <p class="description">La capacité correspond au nombre de passagers possibles par créneau (≈ nombre de pilotes disponibles).</p>
         <table class="widefat fvr-table fvr-table-narrow">
-          <thead><tr><th>Heure</th><th>Capacité</th><th>Actif</th><th></th></tr></thead>
+          <thead><tr><th>Heure</th><th>Capacité</th><th>Disponible jusqu'au <small>(facultatif)</small></th><th>Actif</th><th></th></tr></thead>
           <tbody>
           <?php foreach (array_merge($slots, [$newSlot]) as $sl): $sid = 'fvr-slot-' . (int) $sl['id']; ?>
             <tr>
               <td><input form="<?php echo $sid; ?>" type="time" name="time" step="900" value="<?php echo esc_attr($sl['time']); ?>" required></td>
               <td><input form="<?php echo $sid; ?>" type="number" min="0" name="capacity" value="<?php echo (int) $sl['capacity']; ?>"></td>
+              <td><input form="<?php echo $sid; ?>" type="date" name="valid_until" value="<?php echo esc_attr($sl['valid_until'] ?? ''); ?>"></td>
               <td><input form="<?php echo $sid; ?>" type="checkbox" name="active" value="1"<?php checked($sl['active'], 1); ?>></td>
               <td class="fvr-nowrap">
                 <?php echo fvr_form_open('save_slot', 'id="' . $sid . '" class="fvr-inline"'); ?>
@@ -617,8 +657,6 @@ function fvr_page_settings(): void
               <input type="email" name="admin_email" value="<?php echo esc_attr($s['admin_email']); ?>"></label>
             <label>Préfixe des références
               <input type="text" name="ref_prefix" maxlength="6" value="<?php echo esc_attr($s['ref_prefix']); ?>"></label>
-            <label>Réservation possible jusqu'à (jours à l'avance)
-              <input type="number" min="1" name="max_days_ahead" value="<?php echo (int) $s['max_days_ahead']; ?>"></label>
           </div>
           <label class="fvr-check"><input type="checkbox" name="send_client_email" value="1"<?php checked($s['send_client_email'], 1); ?>>
             Envoyer un e-mail récapitulatif au client</label>

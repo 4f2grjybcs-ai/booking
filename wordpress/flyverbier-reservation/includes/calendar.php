@@ -162,8 +162,8 @@ function fvr_calendar_data(string $from, string $to, bool $canEdit): array
         'today'    => fvr_today(),
         'can_edit' => $canEdit,
         'slots'    => array_map(function ($s) {
-            return ['time' => $s['time'], 'capacity' => (int) $s['capacity'], 'active' => (int) $s['active']];
-        }, $wpdb->get_results('SELECT time, capacity, active FROM ' . fvr_table('slots') . ' ORDER BY time', ARRAY_A)),
+            return ['time' => $s['time'], 'capacity' => (int) $s['capacity'], 'active' => (int) $s['active'], 'until' => $s['valid_until'] ?: ''];
+        }, $wpdb->get_results('SELECT time, capacity, active, valid_until FROM ' . fvr_table('slots') . ' ORDER BY time', ARRAY_A)),
         'blocked'  => $wpdb->get_results($wpdb->prepare(
             'SELECT date, reason FROM ' . fvr_table('blocked') . ' WHERE date BETWEEN %s AND %s', $from, $to), ARRAY_A),
         'bookings' => $bookings,
@@ -243,6 +243,7 @@ function fvr_calendar_config(bool $canEdit, string $token = '', ?array $pilot = 
         'nonce'    => $canEdit ? wp_create_nonce('wp_rest') : '',
         'canEdit'  => $canEdit,
         'today'    => fvr_today(),
+        'lastDay'  => fvr_booking_last_day(),
         'site'     => wp_specialchars_decode(get_bloginfo('name'), ENT_QUOTES),
         'statuses' => fvr_status_labels(),
         'icsUrl'   => $pilot ? fvr_pilot_ics_url($pilot) : ($token ? fvr_ics_url() : ''),

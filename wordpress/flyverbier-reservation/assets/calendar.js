@@ -434,10 +434,12 @@
     return { taken: taken, blocked: blocked, free: blocked === Infinity ? 0 : Math.max(0, cap - taken - blocked) };
   }
   function isFuture(date, time) { return date > C.today || (date === C.today && mins(time) > nowMinutes()); }
+  // Créneau ouvert à la réservation ce jour-là (date limite du créneau et période de réservation en ligne)
+  function slotOpen(s, date) { return (!s.until || date <= s.until) && (!C.lastDay || date <= C.lastDay); }
   // Créneaux encore réservables d'un jour : [{time, free}]
   function freeSlots(date) {
     if (blockedMap()[date]) return [];
-    return activeSlots().filter(function (s) { return isFuture(date, s.time); }).map(function (s) {
+    return activeSlots().filter(function (s) { return isFuture(date, s.time) && slotOpen(s, date); }).map(function (s) {
       return { time: s.time, free: slotFree(state.data, date, s.time, s.capacity).free };
     }).filter(function (x) { return x.free > 0; });
   }
@@ -500,7 +502,7 @@
       slots.forEach(function (s) {
         var st = slotFree(state.data, d, s.time, s.capacity);
         // Places libres (administrateur) : bloc cliquable pour réserver
-        if (C.canEdit && st.free > 0 && !blocked[d] && isFuture(d, s.time)) {
+        if (C.canEdit && st.free > 0 && !blocked[d] && isFuture(d, s.time) && slotOpen(s, d)) {
           items.push({ kind: 'f', time: s.time, free: st.free, s: mins(s.time), e: mins(s.time) + DURATION, order: 2 });
         }
         if (C.canEdit && st.blocked !== Infinity && st.taken > s.capacity) {
@@ -811,7 +813,7 @@
         var pax = parseInt(form.passengers.value, 10) || 1;
         var closed = (data.blocked.length ? '<div class="g-warn">Jour fermé : ' + esc(data.blocked[0].reason || 'fermé') + '</div>' : '') +
           (data.events || []).map(function (ev) { return '<div class="g-warn">⛔ ' + esc(ev.title) + ' · ' + esc(eventTime(ev)) + ' · ' + blocksLabel(ev) + '</div>'; }).join('');
-        var chips = data.slots.filter(function (s) { return s.active; }).map(function (s) {
+        var chips = data.slots.filter(function (s) { return s.active && (!s.until || date <= s.until); }).map(function (s) {
           var st = slotFree(data, date, s.time, s.capacity, b.id);
           var free = st.free;
           var cls = free < pax ? ' full' : '';

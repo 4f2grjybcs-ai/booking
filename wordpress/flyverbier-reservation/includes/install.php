@@ -32,6 +32,7 @@ function fvr_install(): void
   id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
   time char(5) NOT NULL,
   capacity int(11) NOT NULL DEFAULT 4,
+  valid_until date DEFAULT NULL,
   active tinyint(1) NOT NULL DEFAULT 1,
   PRIMARY KEY  (id),
   UNIQUE KEY time (time)

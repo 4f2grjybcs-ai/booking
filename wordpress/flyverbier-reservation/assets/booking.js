@@ -169,6 +169,7 @@
   var max = new Date(fvrConfig.today + 'T12:00:00');
   max.setDate(max.getDate() + fvrConfig.maxDays);
   dateEl.max = max.toISOString().slice(0, 10);
+  if (fvrConfig.maxDate && fvrConfig.maxDate < dateEl.max) dateEl.max = fvrConfig.maxDate;
 
   fetch(api('flights'))
     .then(getJSON)

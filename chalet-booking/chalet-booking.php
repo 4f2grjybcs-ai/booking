@@ -25,6 +25,7 @@ require_once CB_DIR . 'includes/class-cb-settings.php';
 require_once CB_DIR . 'includes/class-cb-availability.php';
 require_once CB_DIR . 'includes/class-cb-pricing.php';
 require_once CB_DIR . 'includes/class-cb-emails.php';
+require_once CB_DIR . 'includes/class-cb-content.php';
 require_once CB_DIR . 'includes/class-cb-ical.php';
 require_once CB_DIR . 'includes/class-cb-rest.php';
 require_once CB_DIR . 'includes/class-cb-shortcode.php';
@@ -40,6 +41,8 @@ add_action(
 		load_plugin_textdomain( 'chalet-booking', false, dirname( plugin_basename( CB_FILE ) ) . '/languages' );
 		CB_DB::maybe_upgrade();
 		CB_Settings::init();
+		CB_Emails::init();
+		CB_Content::init();
 		CB_ICal::init();
 		CB_REST::init();
 		CB_Shortcode::init();

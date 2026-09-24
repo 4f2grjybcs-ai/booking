@@ -16,6 +16,8 @@ class CB_Admin {
 		add_action( 'admin_post_cb_action', array( __CLASS__, 'handle_action' ) );
 		add_action( 'admin_post_cb_add', array( __CLASS__, 'handle_add' ) );
 		add_action( 'admin_post_cb_sync', array( __CLASS__, 'handle_sync' ) );
+		add_action( 'admin_post_cb_test_email', array( __CLASS__, 'handle_test_email' ) );
+		add_action( 'admin_enqueue_scripts', array( __CLASS__, 'enqueue' ) );
 	}
 
 	public static function menu() {
@@ -28,6 +30,8 @@ class CB_Admin {
 		add_submenu_page( 'chalet-booking', __( 'Réservations', 'chalet-booking' ), __( 'Toutes les réservations', 'chalet-booking' ), self::CAP, 'chalet-booking', array( __CLASS__, 'page_bookings' ) );
 		add_submenu_page( 'chalet-booking', __( 'Ajouter / bloquer', 'chalet-booking' ), __( 'Ajouter / bloquer', 'chalet-booking' ), self::CAP, 'chalet-booking-add', array( __CLASS__, 'page_add' ) );
 		add_submenu_page( 'chalet-booking', __( 'Réglages', 'chalet-booking' ), __( 'Réglages', 'chalet-booking' ), self::CAP, 'chalet-booking-settings', array( __CLASS__, 'page_settings' ) );
+		add_submenu_page( 'chalet-booking', __( 'E-mails', 'chalet-booking' ), __( 'E-mails', 'chalet-booking' ), self::CAP, 'chalet-booking-emails', array( __CLASS__, 'page_emails' ) );
+		add_submenu_page( 'chalet-booking', __( 'Photos & conditions', 'chalet-booking' ), __( 'Photos & conditions', 'chalet-booking' ), self::CAP, 'chalet-booking-content', array( __CLASS__, 'page_content' ) );
 	}
 
 	private static function status_labels() {
@@ -56,11 +60,13 @@ class CB_Admin {
 			'deleted'   => __( 'Entrée supprimée.', 'chalet-booking' ),
 			'added'     => __( 'Entrée ajoutée.', 'chalet-booking' ),
 			'synced'    => __( 'Calendriers externes synchronisés.', 'chalet-booking' ),
+			'mail_ok'   => __( 'E-mail de test envoyé. Vérifiez votre boîte de réception (et le dossier spam).', 'chalet-booking' ),
+			'mail_fail' => __( 'Échec de l’envoi de l’e-mail de test. Voir le détail dans le journal ci-dessous.', 'chalet-booking' ),
 			'conflict'  => __( 'Impossible : ces dates chevauchent une autre réservation.', 'chalet-booking' ),
 			'invalid'   => __( 'Dates invalides.', 'chalet-booking' ),
 		);
 		$key   = sanitize_key( $_GET['cb_msg'] ); // phpcs:ignore WordPress.Security.NonceVerification
-		$error = in_array( $key, array( 'conflict', 'invalid' ), true );
+		$error = in_array( $key, array( 'conflict', 'invalid', 'mail_fail' ), true );
 		if ( isset( $messages[ $key ] ) ) {
 			printf( '<div class="notice notice-%s is-dismissible"><p>%s</p></div>', $error ? 'error' : 'success', esc_html( $messages[ $key ] ) );
 		}
@@ -374,8 +380,8 @@ class CB_Admin {
 					$field( 'max_guests', __( 'Capacité maximale (personnes)', 'chalet-booking' ), 'number', '', 'min="1"' );
 					$field( 'check_in_time', __( 'Heure d’arrivée', 'chalet-booking' ), 'time' );
 					$field( 'check_out_time', __( 'Heure de départ', 'chalet-booking' ), 'time' );
-					$field( 'admin_email', __( 'E-mail de notification', 'chalet-booking' ), 'email', __( 'Reçoit les nouvelles demandes de réservation.', 'chalet-booking' ) );
-					$field( 'terms_url', __( 'Lien vers les conditions de location', 'chalet-booking' ), 'url', __( 'Optionnel : si renseigné, le client doit cocher une case d’acceptation.', 'chalet-booking' ) );
+					$field( 'admin_email', __( 'E-mail de notification', 'chalet-booking' ), 'email', __( 'Reçoit les nouvelles demandes de réservation. Expéditeur et contenu des e-mails : menu Réservations → E-mails.', 'chalet-booking' ) );
+					$field( 'terms_url', __( 'Lien vers les conditions de location', 'chalet-booking' ), 'url', __( 'Optionnel : lien vers une page externe. Sinon, rédigez vos conditions dans Réservations → Photos & conditions.', 'chalet-booking' ) );
 					?>
 					<tr><th><label for="cb-payment"><?php esc_html_e( 'Modalités de paiement', 'chalet-booking' ); ?></label></th><td>
 						<textarea id="cb-payment" name="<?php echo esc_attr( $name ); ?>[payment_instructions]" rows="5" class="large-text"><?php echo esc_textarea( $s['payment_instructions'] ); ?></textarea>
@@ -499,6 +505,226 @@ class CB_Admin {
 				}
 			} );
 		} )();
+		</script>
+		<?php
+	}
+
+	/* ------------------------------------------------------------------ */
+	/* E-mails                                                            */
+	/* ------------------------------------------------------------------ */
+
+	public static function enqueue( $hook ) {
+		if ( false !== strpos( $hook, 'chalet-booking-content' ) ) {
+			wp_enqueue_media();
+			wp_enqueue_script( 'jquery-ui-sortable' );
+		}
+	}
+
+	public static function page_emails() {
+		$s     = CB_Emails::get();
+		$name  = CB_Emails::OPTION;
+		$log   = get_option( CB_Emails::LOG, array() );
+		$host  = wp_parse_url( home_url(), PHP_URL_HOST );
+		$host  = preg_replace( '/^www\./', '', (string) $host );
+		?>
+		<div class="wrap">
+			<h1><?php esc_html_e( 'E-mails automatiques', 'chalet-booking' ); ?></h1>
+			<?php settings_errors(); ?>
+			<?php self::notice(); ?>
+
+			<div class="notice notice-info inline"><p>
+				<?php esc_html_e( 'Vous ne recevez pas les e-mails ? Par défaut, WordPress envoie les e-mails via le serveur de l’hébergeur, souvent bloqué ou classé en spam. La solution fiable est d’envoyer via le SMTP de votre messagerie (Infomaniak, Gmail, Microsoft 365…) : remplissez la section SMTP ci-dessous, puis utilisez « Envoyer un e-mail de test ».', 'chalet-booking' ); ?>
+			</p></div>
+
+			<form method="post" action="options.php">
+				<?php settings_fields( 'cb_email_settings_group' ); ?>
+
+				<h2><?php esc_html_e( 'Expéditeur', 'chalet-booking' ); ?></h2>
+				<table class="form-table">
+					<tr><th><label for="cb-from-name"><?php esc_html_e( 'Nom de l’expéditeur', 'chalet-booking' ); ?></label></th><td>
+						<input type="text" id="cb-from-name" class="regular-text" name="<?php echo esc_attr( $name ); ?>[from_name]" value="<?php echo esc_attr( $s['from_name'] ); ?>" placeholder="<?php echo esc_attr( CB_Settings::get( 'chalet_name' ) ); ?>">
+					</td></tr>
+					<tr><th><label for="cb-from-email"><?php esc_html_e( 'Adresse de l’expéditeur', 'chalet-booking' ); ?></label></th><td>
+						<input type="email" id="cb-from-email" class="regular-text" name="<?php echo esc_attr( $name ); ?>[from_email]" value="<?php echo esc_attr( $s['from_email'] ); ?>" placeholder="reservation@<?php echo esc_attr( $host ); ?>">
+						<p class="description"><?php esc_html_e( 'Utilisez une adresse de votre propre domaine (celle du SMTP si vous en configurez un), sinon les e-mails risquent d’arriver en spam. Les réponses des clients vont à l’e-mail de notification défini dans les Réglages.', 'chalet-booking' ); ?></p>
+					</td></tr>
+					<tr><th><?php esc_html_e( 'Copie', 'chalet-booking' ); ?></th><td>
+						<label><input type="checkbox" name="<?php echo esc_attr( $name ); ?>[bcc_admin]" value="1" <?php checked( $s['bcc_admin'] ); ?>> <?php esc_html_e( 'Recevoir en copie cachée les e-mails envoyés aux clients', 'chalet-booking' ); ?></label>
+					</td></tr>
+				</table>
+
+				<h2><?php esc_html_e( 'Contenu des e-mails', 'chalet-booking' ); ?></h2>
+				<p><?php esc_html_e( 'Variables disponibles (remplacées automatiquement) :', 'chalet-booking' ); ?></p>
+				<p style="columns:2;max-width:900px">
+					<?php foreach ( CB_Emails::placeholders() as $tag => $label ) : ?>
+						<code><?php echo esc_html( $tag ); ?></code> <?php echo esc_html( $label ); ?><br>
+					<?php endforeach; ?>
+				</p>
+				<p class="description"><?php esc_html_e( 'Vider un champ puis enregistrer rétablit le texte par défaut.', 'chalet-booking' ); ?></p>
+
+				<?php foreach ( CB_Emails::templates() as $id => $tpl ) : $t = $s['templates'][ $id ]; ?>
+					<div class="card" style="max-width:900px;margin-top:16px">
+						<h3 style="margin-top:.5em"><?php echo esc_html( $tpl['label'] ); ?></h3>
+						<p class="description"><?php echo esc_html( $tpl['desc'] ); ?></p>
+						<p><label><input type="checkbox" name="<?php echo esc_attr( "{$name}[templates][{$id}][enabled]" ); ?>" value="1" <?php checked( $t['enabled'] ); ?>> <?php esc_html_e( 'Activé', 'chalet-booking' ); ?></label></p>
+						<p><label><?php esc_html_e( 'Objet', 'chalet-booking' ); ?><br>
+							<input type="text" class="large-text" name="<?php echo esc_attr( "{$name}[templates][{$id}][subject]" ); ?>" value="<?php echo esc_attr( $t['subject'] ); ?>"></label></p>
+						<p><label><?php esc_html_e( 'Message', 'chalet-booking' ); ?><br>
+							<textarea class="large-text" rows="10" name="<?php echo esc_attr( "{$name}[templates][{$id}][body]" ); ?>"><?php echo esc_textarea( $t['body'] ); ?></textarea></label></p>
+					</div>
+				<?php endforeach; ?>
+
+				<h2><?php esc_html_e( 'Serveur d’envoi SMTP (recommandé)', 'chalet-booking' ); ?></h2>
+				<p><?php esc_html_e( 'Laissez vide si vous utilisez déjà une extension SMTP (WP Mail SMTP, FluentSMTP…). Exemples : Infomaniak mail.infomaniak.com port 587 TLS ; Gmail smtp.gmail.com port 587 TLS avec un « mot de passe d’application ».', 'chalet-booking' ); ?></p>
+				<table class="form-table">
+					<tr><th><label for="cb-smtp-host"><?php esc_html_e( 'Serveur', 'chalet-booking' ); ?></label></th><td><input type="text" id="cb-smtp-host" class="regular-text" name="<?php echo esc_attr( $name ); ?>[smtp_host]" value="<?php echo esc_attr( $s['smtp_host'] ); ?>" placeholder="mail.infomaniak.com"></td></tr>
+					<tr><th><label for="cb-smtp-port"><?php esc_html_e( 'Port', 'chalet-booking' ); ?></label></th><td><input type="number" id="cb-smtp-port" class="small-text" name="<?php echo esc_attr( $name ); ?>[smtp_port]" value="<?php echo esc_attr( $s['smtp_port'] ); ?>"></td></tr>
+					<tr><th><label for="cb-smtp-secure"><?php esc_html_e( 'Chiffrement', 'chalet-booking' ); ?></label></th><td>
+						<select id="cb-smtp-secure" name="<?php echo esc_attr( $name ); ?>[smtp_secure]">
+							<option value="tls" <?php selected( $s['smtp_secure'], 'tls' ); ?>>TLS (587)</option>
+							<option value="ssl" <?php selected( $s['smtp_secure'], 'ssl' ); ?>>SSL (465)</option>
+							<option value="" <?php selected( $s['smtp_secure'], '' ); ?>><?php esc_html_e( 'Aucun', 'chalet-booking' ); ?></option>
+						</select>
+					</td></tr>
+					<tr><th><label for="cb-smtp-user"><?php esc_html_e( 'Identifiant', 'chalet-booking' ); ?></label></th><td><input type="text" id="cb-smtp-user" class="regular-text" autocomplete="off" name="<?php echo esc_attr( $name ); ?>[smtp_user]" value="<?php echo esc_attr( $s['smtp_user'] ); ?>"></td></tr>
+					<tr><th><label for="cb-smtp-pass"><?php esc_html_e( 'Mot de passe', 'chalet-booking' ); ?></label></th><td>
+						<input type="password" id="cb-smtp-pass" class="regular-text" autocomplete="new-password" name="<?php echo esc_attr( $name ); ?>[smtp_pass]" value="" placeholder="<?php echo $s['smtp_pass'] ? esc_attr__( '•••••••• (enregistré — laisser vide pour conserver)', 'chalet-booking' ) : ''; ?>">
+						<?php if ( $s['smtp_pass'] ) : ?>
+							<br><label><input type="checkbox" name="<?php echo esc_attr( $name ); ?>[smtp_clear_pass]" value="1"> <?php esc_html_e( 'Effacer le mot de passe enregistré', 'chalet-booking' ); ?></label>
+						<?php endif; ?>
+					</td></tr>
+				</table>
+
+				<?php submit_button(); ?>
+			</form>
+
+			<hr>
+			<h2><?php esc_html_e( 'Envoyer un e-mail de test', 'chalet-booking' ); ?></h2>
+			<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
+				<input type="hidden" name="action" value="cb_test_email">
+				<?php wp_nonce_field( 'cb_test_email' ); ?>
+				<p>
+					<select name="template">
+						<?php foreach ( CB_Emails::templates() as $id => $tpl ) : ?>
+							<option value="<?php echo esc_attr( $id ); ?>"><?php echo esc_html( $tpl['label'] ); ?></option>
+						<?php endforeach; ?>
+					</select>
+					<input type="email" name="to" class="regular-text" value="<?php echo esc_attr( CB_Settings::get( 'admin_email' ) ); ?>" required>
+					<?php submit_button( __( 'Envoyer le test', 'chalet-booking' ), 'secondary', 'submit', false ); ?>
+				</p>
+				<p class="description"><?php esc_html_e( 'Enregistrez vos modifications avant de tester. Le test utilise une réservation fictive.', 'chalet-booking' ); ?></p>
+			</form>
+
+			<h2><?php esc_html_e( 'Journal des derniers envois', 'chalet-booking' ); ?></h2>
+			<table class="widefat striped" style="max-width:1100px">
+				<thead><tr><th><?php esc_html_e( 'Date', 'chalet-booking' ); ?></th><th><?php esc_html_e( 'Destinataire', 'chalet-booking' ); ?></th><th><?php esc_html_e( 'Objet', 'chalet-booking' ); ?></th><th><?php esc_html_e( 'Résultat', 'chalet-booking' ); ?></th></tr></thead>
+				<tbody>
+				<?php if ( ! $log ) : ?>
+					<tr><td colspan="4"><?php esc_html_e( 'Aucun envoi pour le moment.', 'chalet-booking' ); ?></td></tr>
+				<?php endif; ?>
+				<?php foreach ( $log as $row ) : ?>
+					<tr>
+						<td><?php echo esc_html( wp_date( get_option( 'date_format' ) . ' H:i', $row['time'] ) ); ?></td>
+						<td><?php echo esc_html( $row['to'] ); ?></td>
+						<td><?php echo esc_html( $row['subject'] ); ?></td>
+						<td><?php echo $row['ok'] ? '<span style="color:#00a32a">✔ ' . esc_html__( 'Envoyé', 'chalet-booking' ) . '</span>' : '<span style="color:#b32d2e">✘ ' . esc_html( $row['error'] ) . '</span>'; ?></td>
+					</tr>
+				<?php endforeach; ?>
+				</tbody>
+			</table>
+			<p class="description"><?php esc_html_e( '« Envoyé » signifie que le serveur a accepté l’e-mail. S’il n’arrive pas, regardez le dossier spam et configurez le SMTP.', 'chalet-booking' ); ?></p>
+		</div>
+		<?php
+	}
+
+	public static function handle_test_email() {
+		if ( ! current_user_can( self::CAP ) || ! check_admin_referer( 'cb_test_email' ) ) {
+			wp_die( esc_html__( 'Action non autorisée.', 'chalet-booking' ) );
+		}
+		$to       = sanitize_email( wp_unslash( $_POST['to'] ?? '' ) );
+		$template = sanitize_key( $_POST['template'] ?? 'guest_request' );
+		$ok       = is_email( $to ) && CB_Emails::send_template( $template, CB_Emails::sample_booking(), $to );
+		wp_safe_redirect( admin_url( 'admin.php?page=chalet-booking-emails&cb_msg=' . ( $ok ? 'mail_ok' : 'mail_fail' ) ) );
+		exit;
+	}
+
+	/* ------------------------------------------------------------------ */
+	/* Photos & conditions                                                */
+	/* ------------------------------------------------------------------ */
+
+	public static function page_content() {
+		$c    = CB_Content::get();
+		$name = CB_Content::OPTION;
+		?>
+		<div class="wrap">
+			<h1><?php esc_html_e( 'Photos & conditions générales', 'chalet-booking' ); ?></h1>
+			<?php settings_errors(); ?>
+			<form method="post" action="options.php">
+				<?php settings_fields( 'cb_content_group' ); ?>
+
+				<h2><?php esc_html_e( 'Galerie photos', 'chalet-booking' ); ?></h2>
+				<p><?php printf( /* translators: %s: shortcode */ esc_html__( 'Affichez la galerie avec le shortcode %s (options : columns="4", limit="6"). Glissez-déposez les photos pour changer l’ordre ; la première est mise en avant.', 'chalet-booking' ), '<code>[chalet_gallery]</code>' ); ?></p>
+				<input type="hidden" id="cb-gallery-ids" name="<?php echo esc_attr( $name ); ?>[gallery_ids]" value="<?php echo esc_attr( implode( ',', $c['gallery_ids'] ) ); ?>">
+				<ul id="cb-gallery-list">
+					<?php foreach ( $c['gallery_ids'] as $id ) : ?>
+						<li data-id="<?php echo (int) $id; ?>"><?php echo wp_get_attachment_image( $id, 'thumbnail' ); ?><button type="button" class="cb-gallery-remove" aria-label="<?php esc_attr_e( 'Retirer', 'chalet-booking' ); ?>">&times;</button></li>
+					<?php endforeach; ?>
+				</ul>
+				<p><button type="button" class="button" id="cb-gallery-add"><?php esc_html_e( 'Ajouter des photos', 'chalet-booking' ); ?></button></p>
+
+				<h2><?php esc_html_e( 'Conditions générales de location', 'chalet-booking' ); ?></h2>
+				<p><?php printf( /* translators: %s: shortcode */ esc_html__( 'Affichez-les sur une page avec %s. Dans le formulaire de réservation, le client peut les dérouler et doit les accepter.', 'chalet-booking' ), '<code>[chalet_terms]</code>' ); ?></p>
+				<table class="form-table">
+					<tr><th><label for="cb-terms-title"><?php esc_html_e( 'Titre', 'chalet-booking' ); ?></label></th><td><input type="text" id="cb-terms-title" class="regular-text" name="<?php echo esc_attr( $name ); ?>[terms_title]" value="<?php echo esc_attr( $c['terms_title'] ); ?>"></td></tr>
+					<tr><th><?php esc_html_e( 'Acceptation', 'chalet-booking' ); ?></th><td><label><input type="checkbox" name="<?php echo esc_attr( $name ); ?>[terms_required]" value="1" <?php checked( $c['terms_required'] ); ?>> <?php esc_html_e( 'Le client doit cocher « J’accepte les conditions » pour envoyer sa demande', 'chalet-booking' ); ?></label></td></tr>
+				</table>
+				<?php
+				wp_editor(
+					$c['terms_text'],
+					'cb_terms_text',
+					array(
+						'textarea_name' => $name . '[terms_text]',
+						'textarea_rows' => 18,
+						'media_buttons' => false,
+					)
+				);
+				?>
+				<p class="description"><?php esc_html_e( 'À couvrir par exemple : acompte et solde, caution, annulation, nombre maximum de personnes, animaux, non-fumeur, horaires d’arrivée/départ, ménage, taxe de séjour, responsabilité. Faites-les relire par un professionnel.', 'chalet-booking' ); ?></p>
+
+				<?php submit_button(); ?>
+			</form>
+		</div>
+		<style>
+			#cb-gallery-list{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0}
+			#cb-gallery-list li{position:relative;margin:0;cursor:move}
+			#cb-gallery-list li:first-child{outline:3px solid #2271b1}
+			#cb-gallery-list img{display:block;width:110px;height:110px;object-fit:cover;border-radius:4px}
+			.cb-gallery-remove{position:absolute;top:2px;right:2px;border:0;border-radius:50%;width:22px;height:22px;line-height:20px;background:#b32d2e;color:#fff;cursor:pointer}
+		</style>
+		<script>
+		jQuery( function ( $ ) {
+			var $list = $( '#cb-gallery-list' ), $input = $( '#cb-gallery-ids' ), frame;
+			function save() {
+				$input.val( $list.children().map( function () { return $( this ).data( 'id' ); } ).get().join( ',' ) );
+			}
+			$list.sortable( { update: save } );
+			$list.on( 'click', '.cb-gallery-remove', function () { $( this ).parent().remove(); save(); } );
+			$( '#cb-gallery-add' ).on( 'click', function () {
+				if ( ! frame ) {
+					frame = wp.media( { title: <?php echo wp_json_encode( __( 'Photos du chalet', 'chalet-booking' ) ); ?>, library: { type: 'image' }, multiple: 'add', button: { text: <?php echo wp_json_encode( __( 'Ajouter à la galerie', 'chalet-booking' ) ); ?> } } );
+					frame.on( 'select', function () {
+						frame.state().get( 'selection' ).each( function ( att ) {
+							var a = att.toJSON();
+							if ( $list.children( '[data-id="' + a.id + '"]' ).length ) { return; }
+							var src = ( a.sizes && a.sizes.thumbnail ? a.sizes.thumbnail : a ).url;
+							$list.append( $( '<li>' ).attr( 'data-id', a.id ).append( $( '<img>' ).attr( 'src', src ), '<button type="button" class="cb-gallery-remove">&times;</button>' ) );
+						} );
+						save();
+					} );
+				}
+				frame.open();
+			} );
+		} );
 		</script>
 		<?php
 	}

@@ -79,6 +79,14 @@
 				self.quote();
 			}
 		} );
+		this.form.addEventListener( 'click', function ( e ) {
+			var toggle = e.target.closest( '.cb-terms-toggle' );
+			if ( toggle ) {
+				var box = self.form.querySelector( '.cb-terms-inline' );
+				box.hidden = ! box.hidden;
+				toggle.setAttribute( 'aria-expanded', String( ! box.hidden ) );
+			}
+		} );
 		this.form.addEventListener( 'submit', function ( e ) {
 			e.preventDefault();
 			self.submit();

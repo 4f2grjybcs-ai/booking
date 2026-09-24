@@ -32,7 +32,6 @@ class CB_Shortcode {
 				'api'      => esc_url_raw( rest_url( CB_REST::NS ) ),
 				'months'   => max( 1, min( 4, (int) $atts['months'] ) ),
 				'locale'   => str_replace( '_', '-', get_locale() ),
-				'termsUrl' => CB_Settings::get( 'terms_url' ),
 				'i18n'     => array(
 					'selectArrival'   => __( 'Choisissez votre date d’arrivée.', 'chalet-booking' ),
 					'selectDeparture' => __( 'Choisissez votre date de départ.', 'chalet-booking' ),
@@ -52,7 +51,6 @@ class CB_Shortcode {
 		);
 
 		$max   = (int) CB_Settings::get( 'max_guests' );
-		$terms = CB_Settings::get( 'terms_url' );
 
 		ob_start();
 		?>
@@ -111,18 +109,7 @@ class CB_Shortcode {
 				<div class="cb-hp" aria-hidden="true">
 					<label>Website <input type="text" name="website" tabindex="-1" autocomplete="off"></label>
 				</div>
-				<?php if ( $terms ) : ?>
-					<label class="cb-check">
-						<input type="checkbox" name="terms" value="1" required>
-						<?php
-						printf(
-							/* translators: %s: lien vers les conditions */
-							esc_html__( 'J’accepte les %s.', 'chalet-booking' ),
-							'<a href="' . esc_url( $terms ) . '" target="_blank" rel="noopener">' . esc_html__( 'conditions de location', 'chalet-booking' ) . '</a>'
-						);
-						?>
-					</label>
-				<?php endif; ?>
+				<?php echo CB_Content::checkbox_html(); // phpcs:ignore WordPress.Security.EscapeOutput ?>
 				<button type="submit" class="cb-submit"><?php esc_html_e( 'Envoyer ma demande de réservation', 'chalet-booking' ); ?></button>
 				<p class="cb-note"><?php esc_html_e( 'Aucun paiement n’est demandé à ce stade : nous vous confirmons la disponibilité et les modalités par e-mail.', 'chalet-booking' ); ?></p>
 			</form>

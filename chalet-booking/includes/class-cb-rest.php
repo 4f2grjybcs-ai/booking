@@ -124,7 +124,7 @@ class CB_REST {
 		if ( '' === $name || ! is_email( $email ) || '' === $phone ) {
 			return new WP_Error( 'cb_contact', __( 'Merci d’indiquer votre nom, un e-mail valide et un téléphone.', 'chalet-booking' ), array( 'status' => 400 ) );
 		}
-		if ( CB_Settings::get( 'terms_url' ) && ! rest_sanitize_boolean( $request->get_param( 'terms' ) ) ) {
+		if ( CB_Content::terms_required() && ! rest_sanitize_boolean( $request->get_param( 'terms' ) ) ) {
 			return new WP_Error( 'cb_terms', __( 'Merci d’accepter les conditions de location.', 'chalet-booking' ), array( 'status' => 400 ) );
 		}
 

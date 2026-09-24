@@ -245,6 +245,20 @@ class CB_Emails {
 	}
 
 	/**
+	 * E-mail libre envoyé depuis le back-office (variables remplacées si une réservation est fournie).
+	 */
+	public static function send_custom( $to, $subject, $body, $booking = null ) {
+		if ( $booking ) {
+			$vars    = self::vars( $booking );
+			$subject = strtr( $subject, $vars );
+			$body    = strtr( $body, $vars );
+		}
+		$admin   = CB_Settings::get( 'admin_email' );
+		$headers = is_email( $admin ) ? array( 'Reply-To: ' . $admin ) : array();
+		return self::mail( $to, $subject, $body, $headers );
+	}
+
+	/**
 	 * wp_mail avec l'expéditeur et le SMTP du plugin, et journalisation.
 	 */
 	private static function mail( $to, $subject, $body, $headers ) {

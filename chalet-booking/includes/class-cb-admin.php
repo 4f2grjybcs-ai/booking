@@ -370,6 +370,31 @@ class CB_Admin {
 			<?php self::notice(); ?>
 			<p><?php printf( /* translators: %s: shortcode */ esc_html__( 'Insérez le shortcode %s dans une page pour afficher le calendrier et le formulaire de réservation.', 'chalet-booking' ), '<code>[chalet_booking]</code>' ); ?></p>
 
+			<div class="card" style="max-width:900px">
+				<h2><?php esc_html_e( 'Back-office (gestion sans WordPress)', 'chalet-booking' ); ?></h2>
+				<?php $bo = CB_Backoffice::url(); ?>
+				<?php if ( $bo ) : ?>
+					<p><?php esc_html_e( 'Votre espace de gestion :', 'chalet-booking' ); ?> <a href="<?php echo esc_url( $bo ); ?>" target="_blank"><strong><?php echo esc_html( $bo ); ?></strong></a></p>
+					<p class="description"><?php esc_html_e( 'Ajoutez-le à l’écran d’accueil de votre téléphone pour l’utiliser comme une application.', 'chalet-booking' ); ?></p>
+				<?php else : ?>
+					<p><?php esc_html_e( 'Créez la page de gestion (tableau de bord, calendrier, réservations, paiements, tarifs, statistiques) accessible depuis votre site, sur ordinateur ou téléphone.', 'chalet-booking' ); ?></p>
+					<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
+						<input type="hidden" name="action" value="cb_create_backoffice_page">
+						<?php wp_nonce_field( 'cb_create_backoffice_page' ); ?>
+						<?php submit_button( __( 'Créer la page de gestion', 'chalet-booking' ), 'primary', 'submit', false ); ?>
+					</form>
+				<?php endif; ?>
+				<p class="description">
+					<?php
+					printf(
+						/* translators: %s: lien vers Utilisateurs */
+						esc_html__( 'Pour donner accès à une autre personne (conciergerie, famille…) sans lui ouvrir WordPress : %s et choisissez le rôle « Gestionnaire du chalet ».', 'chalet-booking' ),
+						'<a href="' . esc_url( admin_url( 'user-new.php' ) ) . '">' . esc_html__( 'créez un utilisateur', 'chalet-booking' ) . '</a>'
+					);
+					?>
+				</p>
+			</div>
+
 			<form method="post" action="options.php">
 				<?php settings_fields( 'cb_settings_group' ); ?>
 

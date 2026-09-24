@@ -9,7 +9,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 class CB_DB {
 
-	const DB_VERSION = '1';
+	const DB_VERSION = '2';
 
 	/** Statuts qui rendent les nuits indisponibles. */
 	const BLOCKING_STATUSES = array( 'pending', 'confirmed', 'blocked' );
@@ -41,6 +41,8 @@ class CB_DB {
 				message text NULL,
 				total decimal(10,2) NOT NULL DEFAULT 0,
 				price_details longtext NULL,
+				paid decimal(10,2) NOT NULL DEFAULT 0,
+				notes text NULL,
 				external_uid varchar(255) NOT NULL DEFAULT '',
 				feed varchar(64) NOT NULL DEFAULT '',
 				created_at datetime NOT NULL,
@@ -52,6 +54,7 @@ class CB_DB {
 		);
 
 		update_option( 'cb_db_version', self::DB_VERSION );
+		CB_Backoffice::install_roles();
 	}
 
 	public static function maybe_upgrade() {
@@ -93,6 +96,14 @@ class CB_DB {
 		return $wpdb->get_row( $wpdb->prepare( "SELECT * FROM {$table} WHERE id = %d", $id ) );
 	}
 
+	public static function update( $id, array $data ) {
+		global $wpdb;
+		if ( isset( $data['price_details'] ) && is_array( $data['price_details'] ) ) {
+			$data['price_details'] = wp_json_encode( $data['price_details'] );
+		}
+		return false !== $wpdb->update( self::table(), $data, array( 'id' => (int) $id ) );
+	}
+
 	public static function update_status( $id, $status ) {
 		global $wpdb;
 		return false !== $wpdb->update( self::table(), array( 'status' => $status ), array( 'id' => (int) $id ) );
@@ -126,6 +137,11 @@ class CB_DB {
 		if ( ! empty( $args['exclude_source'] ) ) {
 			$where[]  = 'source <> %s';
 			$params[] = $args['exclude_source'];
+		}
+		if ( ! empty( $args['search'] ) ) {
+			$like     = '%' . $wpdb->esc_like( $args['search'] ) . '%';
+			$where[]  = '(name LIKE %s OR email LIKE %s OR phone LIKE %s OR notes LIKE %s)';
+			$params   = array_merge( $params, array( $like, $like, $like, $like ) );
 		}
 		// Chevauchement avec [from, to).
 		if ( ! empty( $args['from'] ) ) {

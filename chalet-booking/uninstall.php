@@ -15,4 +15,10 @@ delete_option( 'cb_ical_last_sync' );
 delete_option( 'cb_email_settings' );
 delete_option( 'cb_email_log' );
 delete_option( 'cb_content' );
+delete_option( 'cb_backoffice_page_id' );
+remove_role( 'cb_manager' );
+$cb_admin_role = get_role( 'administrator' );
+if ( $cb_admin_role ) {
+	$cb_admin_role->remove_cap( 'cb_manage_bookings' );
+}
 wp_clear_scheduled_hook( 'cb_ical_sync' );

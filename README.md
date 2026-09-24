@@ -14,6 +14,7 @@ Plugin de réservation pour un chalet de location de vacances à Verbier.
 - **E-mails configurables** : nom et adresse d’expéditeur, objet et texte de chaque e-mail avec variables (`{name}`, `{check_in}`, `{summary}`…), activation par e-mail, copie cachée, **SMTP intégré**, e-mail de test et journal des envois.
 - **Galerie photos** triable (shortcode `[chalet_gallery]`) avec visionneuse plein écran (flèches, clavier, balayage sur mobile).
 - **Conditions générales** rédigées dans l’admin (shortcode `[chalet_terms]`), dépliables et à accepter dans le formulaire.
+- **Description du chalet** (shortcode `[chalet_description]`) : présentation, chiffres clés, pièces avec photo, équipements par catégorie, inclus / en supplément, règlement intérieur, situation et accès. Se remplit dans *Réservations → Description du chalet*.
 - **Back-office sans WordPress** (voir ci-dessous).
 - Protection anti-spam (champ piège + limite de 5 demandes/heure par IP) et verrou contre les réservations simultanées.
 
@@ -89,6 +90,7 @@ chalet-booking/
 │   ├── class-cb-shortcode.php    Shortcode [chalet_booking]
 │   ├── class-cb-admin.php        Pages d’administration (wp-admin)
 │   ├── class-cb-content.php      Galerie photos et conditions générales
+│   ├── class-cb-description.php  Description du chalet (pièces, équipements, règles)
 │   ├── class-cb-backoffice.php   Back-office : accès, rôle, page plein écran
 │   └── class-cb-manage-api.php   API privée du back-office
 └── assets/                       JS / CSS (réservation, galerie, back-office)

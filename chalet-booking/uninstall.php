@@ -15,6 +15,7 @@ delete_option( 'cb_ical_last_sync' );
 delete_option( 'cb_email_settings' );
 delete_option( 'cb_email_log' );
 delete_option( 'cb_content' );
+delete_option( 'cb_description' );
 delete_option( 'cb_backoffice_page_id' );
 remove_role( 'cb_manager' );
 $cb_admin_role = get_role( 'administrator' );

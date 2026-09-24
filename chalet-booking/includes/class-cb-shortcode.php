@@ -31,7 +31,9 @@ class CB_Shortcode {
 			array(
 				'api'      => esc_url_raw( rest_url( CB_REST::NS ) ),
 				'months'   => max( 1, min( 4, (int) $atts['months'] ) ),
-				'locale'   => str_replace( '_', '-', get_locale() ),
+				'locale'   => CB_I18n::languages()[ CB_I18n::active() ]['bcp47'],
+				'lang'     => CB_I18n::active(),
+				'lowerDays' => in_array( CB_I18n::active(), array( 'fr', 'es' ), true ),
 				'i18n'     => array(
 					'selectArrival'   => __( 'Choisissez votre date d’arrivée.', 'chalet-booking' ),
 					'selectDeparture' => __( 'Choisissez votre date de départ.', 'chalet-booking' ),

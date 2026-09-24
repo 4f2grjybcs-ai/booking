@@ -156,6 +156,7 @@ class CB_REST {
 				'message'       => $message,
 				'total'         => $quote['total'],
 				'price_details' => $quote,
+				'lang'          => CB_I18n::active(),
 			)
 		);
 		$wpdb->query( $wpdb->prepare( 'SELECT RELEASE_LOCK(%s)', $lock ) );

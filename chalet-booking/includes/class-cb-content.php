@@ -104,6 +104,15 @@ class CB_Content {
 
 		wp_enqueue_style( 'chalet-booking' );
 		wp_enqueue_script( 'chalet-gallery' );
+		wp_localize_script(
+			'chalet-gallery',
+			'ChaletGallery',
+			array(
+				'close' => __( 'Fermer', 'chalet-booking' ),
+				'prev'  => __( 'Photo précédente', 'chalet-booking' ),
+				'next'  => __( 'Photo suivante', 'chalet-booking' ),
+			)
+		);
 
 		$columns = max( 1, min( 6, (int) $atts['columns'] ) );
 		$html    = '<div class="cb-gallery" style="--cb-cols:' . $columns . '" data-cb-gallery>';
@@ -112,7 +121,7 @@ class CB_Content {
 			if ( ! $full ) {
 				continue;
 			}
-			$caption = wp_get_attachment_caption( $id );
+			$caption = CB_I18n::t( (string) wp_get_attachment_caption( $id ) );
 			$html   .= sprintf(
 				'<a class="cb-gallery-item%s" href="%s" data-caption="%s">%s</a>',
 				0 === $i ? ' cb-gallery-first' : '',
@@ -136,12 +145,12 @@ class CB_Content {
 	 * [chalet_terms] — affiche les conditions générales.
 	 */
 	public static function terms() {
-		$text = (string) self::get( 'terms_text' );
+		$text = CB_I18n::t( (string) self::get( 'terms_text' ) );
 		if ( '' === trim( $text ) ) {
 			return '';
 		}
 		wp_enqueue_style( 'chalet-booking' );
-		$title = self::get( 'terms_title' );
+		$title = CB_I18n::t( self::get( 'terms_title' ) );
 		return '<div class="cb-terms" id="cb-terms">'
 			. ( $title ? '<h2>' . esc_html( $title ) . '</h2>' : '' )
 			. wpautop( wp_kses_post( $text ) )
@@ -166,7 +175,7 @@ class CB_Content {
 		$html .= sprintf( esc_html__( 'J’ai lu et j’accepte les %s.', 'chalet-booking' ), $link );
 		$html .= '</label>';
 		if ( ! $url ) {
-			$html .= '<div class="cb-terms-inline" hidden>' . wpautop( wp_kses_post( (string) self::get( 'terms_text' ) ) ) . '</div>';
+			$html .= '<div class="cb-terms-inline" hidden>' . wpautop( wp_kses_post( CB_I18n::t( (string) self::get( 'terms_text' ) ) ) ) . '</div>';
 		}
 		return $html;
 	}

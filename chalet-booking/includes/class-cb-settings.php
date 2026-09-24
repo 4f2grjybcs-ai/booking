@@ -35,6 +35,8 @@ class CB_Settings {
 			'ical_import_urls'     => '',
 			'ical_token'           => '',
 			'seasons'              => array(),
+			'languages'            => array( 'en', 'de', 'es' ),
+			'language_button'      => 1,
 		);
 	}
 
@@ -106,6 +108,12 @@ class CB_Settings {
 		}
 		if ( ! empty( $input['regenerate_token'] ) || empty( $out['ical_token'] ) ) {
 			$out['ical_token'] = wp_generate_password( 32, false );
+		}
+
+		// Langues : la case « section langues » n'est envoyée que par la page Réglages.
+		if ( isset( $input['languages_present'] ) ) {
+			$out['languages']       = array_values( array_intersect( array( 'en', 'de', 'es' ), (array) ( $input['languages'] ?? array() ) ) );
+			$out['language_button'] = empty( $input['language_button'] ) ? 0 : 1;
 		}
 
 		$seasons = array();

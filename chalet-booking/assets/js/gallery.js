@@ -3,6 +3,7 @@
 	'use strict';
 
 	var box, img, caption, counter, items = [], index = 0, touchX = null;
+	var L = window.ChaletGallery || { close: 'Fermer', prev: 'Précédente', next: 'Suivante' };
 
 	function build() {
 		box = document.createElement( 'div' );
@@ -11,10 +12,10 @@
 		box.setAttribute( 'aria-modal', 'true' );
 		box.hidden = true;
 		box.innerHTML =
-			'<button type="button" class="cb-lb-close" aria-label="Fermer">&times;</button>' +
-			'<button type="button" class="cb-lb-prev" aria-label="Précédente">&lsaquo;</button>' +
+			'<button type="button" class="cb-lb-close" aria-label="' + L.close + '">&times;</button>' +
+			'<button type="button" class="cb-lb-prev" aria-label="' + L.prev + '">&lsaquo;</button>' +
 			'<figure><img alt=""><figcaption></figcaption></figure>' +
-			'<button type="button" class="cb-lb-next" aria-label="Suivante">&rsaquo;</button>' +
+			'<button type="button" class="cb-lb-next" aria-label="' + L.next + '">&rsaquo;</button>' +
 			'<div class="cb-lb-counter"></div>';
 		document.body.appendChild( box );
 		img = box.querySelector( 'img' );

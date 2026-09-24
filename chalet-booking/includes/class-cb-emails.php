@@ -165,12 +165,11 @@ class CB_Emails {
 	/* ------------------------------------------------------------------ */
 
 	private static function summary( $booking ) {
-		$fmt   = get_option( 'date_format' );
 		$lines = array(
 			/* translators: 1: date, 2: heure */
-			sprintf( __( 'Arrivée : %1$s dès %2$s', 'chalet-booking' ), date_i18n( $fmt, strtotime( $booking->check_in ) ), CB_Settings::get( 'check_in_time' ) ),
+			sprintf( __( 'Arrivée : %1$s dès %2$s', 'chalet-booking' ), CB_I18n::date( $booking->check_in ), CB_Settings::get( 'check_in_time' ) ),
 			/* translators: 1: date, 2: heure */
-			sprintf( __( 'Départ : %1$s avant %2$s', 'chalet-booking' ), date_i18n( $fmt, strtotime( $booking->check_out ) ), CB_Settings::get( 'check_out_time' ) ),
+			sprintf( __( 'Départ : %1$s avant %2$s', 'chalet-booking' ), CB_I18n::date( $booking->check_out ), CB_Settings::get( 'check_out_time' ) ),
 			/* translators: 1: adultes, 2: enfants */
 			sprintf( __( 'Voyageurs : %1$d adulte(s), %2$d enfant(s)', 'chalet-booking' ), $booking->adults, $booking->children ),
 			'',
@@ -187,20 +186,19 @@ class CB_Emails {
 	}
 
 	private static function vars( $booking ) {
-		$fmt = get_option( 'date_format' );
 		return array(
 			'{name}'       => $booking->name,
 			'{email}'      => $booking->email,
 			'{phone}'      => $booking->phone,
-			'{check_in}'   => date_i18n( $fmt, strtotime( $booking->check_in ) ),
-			'{check_out}'  => date_i18n( $fmt, strtotime( $booking->check_out ) ),
+			'{check_in}'   => CB_I18n::date( $booking->check_in ),
+			'{check_out}'  => CB_I18n::date( $booking->check_out ),
 			'{nights}'     => count( CB_Availability::nights( $booking->check_in, $booking->check_out ) ),
 			'{adults}'     => (int) $booking->adults,
 			'{children}'   => (int) $booking->children,
 			'{total}'      => CB_Settings::format_price( $booking->total ),
 			'{summary}'    => self::summary( $booking ),
 			'{message}'    => (string) $booking->message,
-			'{payment}'    => (string) CB_Settings::get( 'payment_instructions' ),
+			'{payment}'    => CB_I18n::t( (string) CB_Settings::get( 'payment_instructions' ) ),
 			'{booking_id}' => (int) $booking->id,
 			'{admin_link}' => admin_url( 'admin.php?page=chalet-booking&view=' . (int) $booking->id ),
 			'{chalet}'     => CB_Settings::get( 'chalet_name' ),
@@ -226,10 +224,22 @@ class CB_Emails {
 			return false;
 		}
 
-		$vars    = self::vars( $booking );
-		$subject = strtr( $tpl['subject'], $vars );
-		// Supprime les lignes « Modalités de paiement : » vides si aucun texte n'est configuré.
-		$body = strtr( $tpl['body'], $vars );
+		// Langue : celle du client pour ses e-mails, le français pour le propriétaire.
+		$lang = $for_admin ? 'fr' : ( ! empty( $booking->lang ) ? $booking->lang : 'fr' );
+		list( $subject, $body ) = CB_I18n::with(
+			$lang,
+			function () use ( $id, $tpl, $booking, $lang ) {
+				// Texte par défaut non modifié → version traduite fournie par le plugin ;
+				// texte personnalisé → traduction saisie dans Réservations → Traductions.
+				$default_fr = CB_I18n::with( 'fr', array( __CLASS__, 'templates' ) )[ $id ];
+				$default    = self::templates()[ $id ];
+				$subject    = $tpl['subject'] === $default_fr['subject'] ? $default['subject'] : CB_I18n::t( $tpl['subject'], $lang );
+				$body       = $tpl['body'] === $default_fr['body'] ? $default['body'] : CB_I18n::t( $tpl['body'], $lang );
+				$vars       = self::vars( $booking );
+				return array( strtr( $subject, $vars ), strtr( $body, $vars ) );
+			}
+		);
+		// Supprime les lignes vides en trop (ex. modalités de paiement non renseignées).
 		$body = preg_replace( "/\n{3,}/", "\n\n", $body );
 
 		$headers  = array();
@@ -249,7 +259,9 @@ class CB_Emails {
 	 */
 	public static function send_custom( $to, $subject, $body, $booking = null ) {
 		if ( $booking ) {
-			$vars    = self::vars( $booking );
+			$vars    = CB_I18n::with( ! empty( $booking->lang ) ? $booking->lang : 'fr', function () use ( $booking ) {
+				return self::vars( $booking );
+			} );
 			$subject = strtr( $subject, $vars );
 			$body    = strtr( $body, $vars );
 		}

@@ -414,6 +414,22 @@ class CB_Admin {
 					</td></tr>
 				</table>
 
+				<h2><?php esc_html_e( 'Langues du site', 'chalet-booking' ); ?></h2>
+				<table class="form-table">
+					<tr><th><?php esc_html_e( 'Langues proposées', 'chalet-booking' ); ?></th><td>
+						<input type="hidden" name="<?php echo esc_attr( $name ); ?>[languages_present]" value="1">
+						<label><input type="checkbox" checked disabled> Français <?php esc_html_e( '(langue principale)', 'chalet-booking' ); ?></label><br>
+						<?php foreach ( array( 'en' => 'English', 'de' => 'Deutsch', 'es' => 'Español' ) as $code => $label ) : ?>
+							<label><input type="checkbox" name="<?php echo esc_attr( $name ); ?>[languages][]" value="<?php echo esc_attr( $code ); ?>" <?php checked( in_array( $code, (array) $s['languages'], true ) ); ?>> <?php echo esc_html( $label ); ?></label><br>
+						<?php endforeach; ?>
+						<p class="description"><?php esc_html_e( 'Traduisez vos propres textes (description, conditions, titres de pages…) dans Réservations → Traductions.', 'chalet-booking' ); ?></p>
+					</td></tr>
+					<tr><th><?php esc_html_e( 'Bouton de langue', 'chalet-booking' ); ?></th><td>
+						<label><input type="checkbox" name="<?php echo esc_attr( $name ); ?>[language_button]" value="1" <?php checked( $s['language_button'] ); ?>> <?php esc_html_e( 'Afficher le bouton 🌐 de changement de langue en bas à gauche de toutes les pages', 'chalet-booking' ); ?></label>
+						<p class="description"><?php printf( /* translators: %s: shortcode */ esc_html__( 'Vous pouvez aussi placer le sélecteur où vous voulez (ex. dans l’en-tête) avec le shortcode %s.', 'chalet-booking' ), '<code>[chalet_langues]</code>' ); ?></p>
+					</td></tr>
+				</table>
+
 				<h2><?php esc_html_e( 'Tarifs et règles', 'chalet-booking' ); ?></h2>
 				<table class="form-table">
 					<?php
@@ -634,6 +650,11 @@ class CB_Admin {
 							<option value="<?php echo esc_attr( $id ); ?>"><?php echo esc_html( $tpl['label'] ); ?></option>
 						<?php endforeach; ?>
 					</select>
+					<select name="lang">
+						<?php foreach ( CB_I18n::languages() as $code => $l ) : ?>
+							<option value="<?php echo esc_attr( $code ); ?>"><?php echo esc_html( $l['label'] ); ?></option>
+						<?php endforeach; ?>
+					</select>
 					<input type="email" name="to" class="regular-text" value="<?php echo esc_attr( CB_Settings::get( 'admin_email' ) ); ?>" required>
 					<?php submit_button( __( 'Envoyer le test', 'chalet-booking' ), 'secondary', 'submit', false ); ?>
 				</p>
@@ -668,7 +689,9 @@ class CB_Admin {
 		}
 		$to       = sanitize_email( wp_unslash( $_POST['to'] ?? '' ) );
 		$template = sanitize_key( $_POST['template'] ?? 'guest_request' );
-		$ok       = is_email( $to ) && CB_Emails::send_template( $template, CB_Emails::sample_booking(), $to );
+		$sample       = CB_Emails::sample_booking();
+		$sample->lang = array_key_exists( sanitize_key( $_POST['lang'] ?? '' ), CB_I18n::languages() ) ? sanitize_key( $_POST['lang'] ) : 'fr';
+		$ok           = is_email( $to ) && CB_Emails::send_template( $template, $sample, $to );
 		wp_safe_redirect( admin_url( 'admin.php?page=chalet-booking-emails&cb_msg=' . ( $ok ? 'mail_ok' : 'mail_fail' ) ) );
 		exit;
 	}

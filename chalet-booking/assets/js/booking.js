@@ -29,6 +29,8 @@
 	}
 	// Compatible avec les permaliens simples (…/index.php?rest_route=/chalet-booking/v1).
 	function api( path, query ) {
+		// La langue du visiteur accompagne chaque appel (messages d'erreur, détail du prix, e-mails).
+		query = ( query ? query + '&' : '' ) + 'lang=' + encodeURIComponent( cfg.lang || 'fr' );
 		var url = cfg.api + path;
 		return query ? url + ( url.indexOf( '?' ) === -1 ? '?' : '&' ) + query : url;
 	}
@@ -196,7 +198,7 @@
 		if ( ! this.checkOut ) {
 			var info = [ t.selectDeparture, sprintf( t.minNights, r.minNights ) ];
 			if ( r.arrivalDay >= 0 ) {
-				info.push( sprintf( t.arrivalOnly, t.weekdays[ r.arrivalDay ].toLowerCase() ) );
+				info.push( sprintf( t.arrivalOnly, cfg.lowerDays ? t.weekdays[ r.arrivalDay ].toLowerCase() : t.weekdays[ r.arrivalDay ] ) );
 			}
 			this.hint.textContent = info.join( ' · ' );
 		} else {

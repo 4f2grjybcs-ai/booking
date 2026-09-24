@@ -283,3 +283,16 @@
 .cb-rules li::before { content: "•"; position: absolute; left: 6px; color: #8b2e1f; font-weight: 700; }
 .cb-access li::before { content: "📍"; position: absolute; left: 0; font-size: 13px; top: 5px; }
 .cb-two-cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 24px; }
+
+/* Sélecteur de langue [chalet_langues] */
+.cb-lang-inline { display: inline-flex; gap: 4px; flex-wrap: wrap; }
+.cb-lang-inline a {
+	padding: 4px 8px;
+	border-radius: 6px;
+	text-decoration: none;
+	font-weight: 600;
+	font-size: 14px;
+	color: inherit;
+	opacity: .7;
+}
+.cb-lang-inline a:hover, .cb-lang-inline a.active { opacity: 1; background: rgba(0, 0, 0, .06); }

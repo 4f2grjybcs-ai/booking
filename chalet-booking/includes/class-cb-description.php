@@ -220,10 +220,29 @@ class CB_Description {
 	/* Affichage public                                                   */
 	/* ------------------------------------------------------------------ */
 
+	/** Textes du propriétaire dans la langue du visiteur. */
+	private static function translated( $d ) {
+		if ( 'fr' === CB_I18n::active() ) {
+			return $d;
+		}
+		$d['intro'] = CB_I18n::t( $d['intro'] );
+		$d['beds']  = CB_I18n::t( $d['beds'] );
+		foreach ( array( 'equip_more', 'included', 'extras', 'rules_more', 'access' ) as $k ) {
+			$d[ $k ] = CB_I18n::t_lines( $d[ $k ] );
+		}
+		foreach ( $d['rooms'] as &$r ) {
+			foreach ( array( 'name', 'floor', 'beds', 'desc' ) as $k ) {
+				$r[ $k ] = CB_I18n::t( $r[ $k ] );
+			}
+		}
+		unset( $r );
+		return $d;
+	}
+
 	public static function render( $atts ) {
 		$atts     = shortcode_atts( array( 'sections' => 'intro,facts,rooms,equipment,included,rules,access' ), $atts, 'chalet_description' );
 		$sections = array_map( 'trim', explode( ',', $atts['sections'] ) );
-		$d        = self::get();
+		$d        = self::translated( self::get() );
 		$html     = '';
 
 		wp_enqueue_style( 'chalet-booking' );

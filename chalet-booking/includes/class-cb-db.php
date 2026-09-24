@@ -9,7 +9,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 class CB_DB {
 
-	const DB_VERSION = '2';
+	const DB_VERSION = '3';
 
 	/** Statuts qui rendent les nuits indisponibles. */
 	const BLOCKING_STATUSES = array( 'pending', 'confirmed', 'blocked' );
@@ -43,6 +43,7 @@ class CB_DB {
 				price_details longtext NULL,
 				paid decimal(10,2) NOT NULL DEFAULT 0,
 				notes text NULL,
+				lang varchar(5) NOT NULL DEFAULT 'fr',
 				external_uid varchar(255) NOT NULL DEFAULT '',
 				feed varchar(64) NOT NULL DEFAULT '',
 				created_at datetime NOT NULL,

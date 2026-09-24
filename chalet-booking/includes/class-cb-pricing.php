@@ -27,7 +27,7 @@ class CB_Pricing {
 		$groups = array();
 		foreach ( $nights as $night ) {
 			$season = CB_Availability::season_for( $night );
-			$label  = $season && $season['name'] ? $season['name'] : __( 'Tarif standard', 'chalet-booking' );
+			$label  = $season && $season['name'] ? CB_I18n::t( $season['name'] ) : __( 'Tarif standard', 'chalet-booking' );
 			$price  = self::night_price( $night );
 			$key    = $label . '|' . $price;
 			$last   = end( $groups );

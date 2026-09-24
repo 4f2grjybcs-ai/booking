@@ -105,14 +105,14 @@ class CB_Availability {
 		$in_season = self::season_for( $check_in );
 		if ( $in_season && $in_season['arrival_day'] >= 0 && (int) ( new DateTime( $check_in ) )->format( 'w' ) !== (int) $in_season['arrival_day'] ) {
 			/* translators: %s: jour de la semaine */
-			return new WP_Error( 'cb_arrival_day', sprintf( __( 'En cette période, les arrivées se font uniquement le %s.', 'chalet-booking' ), strtolower( $days[ $in_season['arrival_day'] ] ) ) );
+			return new WP_Error( 'cb_arrival_day', sprintf( __( 'En cette période, les arrivées se font uniquement le %s.', 'chalet-booking' ), CB_I18n::inline_day( $days[ $in_season['arrival_day'] ] ) ) );
 		}
 
 		$last_night = ( new DateTime( $check_out ) )->modify( '-1 day' )->format( 'Y-m-d' );
 		$out_season = self::season_for( $last_night );
 		if ( $out_season && $out_season['arrival_day'] >= 0 && (int) ( new DateTime( $check_out ) )->format( 'w' ) !== (int) $out_season['arrival_day'] ) {
 			/* translators: %s: jour de la semaine */
-			return new WP_Error( 'cb_departure_day', sprintf( __( 'En cette période, les départs se font uniquement le %s.', 'chalet-booking' ), strtolower( $days[ $out_season['arrival_day'] ] ) ) );
+			return new WP_Error( 'cb_departure_day', sprintf( __( 'En cette période, les départs se font uniquement le %s.', 'chalet-booking' ), CB_I18n::inline_day( $days[ $out_season['arrival_day'] ] ) ) );
 		}
 
 		$adults   = (int) $adults;

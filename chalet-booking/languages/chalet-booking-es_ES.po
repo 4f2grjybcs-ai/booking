@@ -1,0 +1,473 @@
+msgid ""
+msgstr ""
+"Project-Id-Version: Chalet Booking\n"
+"Language: es_ES\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+"X-Domain: chalet-booking\n"
+
+msgid "Voyageurs"
+msgstr "Huéspedes"
+
+msgid "Total"
+msgstr "Total"
+
+msgid "E-mail"
+msgstr "Correo electrónico"
+
+msgid "Téléphone"
+msgstr "Teléfono"
+
+msgid "Frais de nettoyage final"
+msgstr "Limpieza final"
+
+msgid "Conditions générales de location"
+msgstr "Condiciones generales de alquiler"
+
+msgid "Veuillez choisir des dates d’arrivée et de départ valides."
+msgstr "Elija fechas de llegada y salida válidas."
+
+msgid "La date de départ doit être après la date d’arrivée."
+msgstr "La fecha de salida debe ser posterior a la de llegada."
+
+msgid "Cette date d’arrivée n’est plus réservable en ligne. Contactez-nous directement."
+msgstr "Esta fecha de llegada ya no se puede reservar en línea. Contáctenos directamente."
+
+msgid "Les réservations ne sont pas encore ouvertes pour ces dates."
+msgstr "Las reservas para estas fechas aún no están abiertas."
+
+msgid "Séjour minimum de %d nuit pour ces dates."
+msgid_plural "Séjour minimum de %d nuits pour ces dates."
+msgstr[0] "Estancia mínima de %d noche para estas fechas."
+msgstr[1] "Estancia mínima de %d noches para estas fechas."
+
+msgid "En cette période, les arrivées se font uniquement le %s."
+msgstr "En este periodo, las llegadas son solo en %s."
+
+msgid "En cette période, les départs se font uniquement le %s."
+msgstr "En este periodo, las salidas son solo en %s."
+
+msgid "Au moins un adulte est requis."
+msgstr "Se requiere al menos un adulto."
+
+msgid "Le chalet accueille %d personnes au maximum."
+msgstr "El chalet tiene capacidad para %d personas como máximo."
+
+msgid "Désolé, ces dates ne sont plus disponibles."
+msgstr "Lo sentimos, estas fechas ya no están disponibles."
+
+msgid "Chargement…"
+msgstr "Cargando…"
+
+msgid "Fermer"
+msgstr "Cerrar"
+
+msgid "Photo précédente"
+msgstr "Foto anterior"
+
+msgid "Photo suivante"
+msgstr "Foto siguiente"
+
+msgid "conditions générales de location"
+msgstr "condiciones generales de alquiler"
+
+msgid "J’ai lu et j’accepte les %s."
+msgstr "He leído y acepto las %s."
+
+msgid "Chambre"
+msgstr "Dormitorio"
+
+msgid "Salle de bain"
+msgstr "Baño"
+
+msgid "Salle d’eau"
+msgstr "Baño con ducha"
+
+msgid "WC séparé"
+msgstr "Aseo independiente"
+
+msgid "Salon"
+msgstr "Salón"
+
+msgid "Salle à manger"
+msgstr "Comedor"
+
+msgid "Cuisine"
+msgstr "Cocina"
+
+msgid "Espace bien-être"
+msgstr "Zona de bienestar"
+
+msgid "Local à skis"
+msgstr "Guardaesquís"
+
+msgid "Autre"
+msgstr "Otro"
+
+msgid "Cuisine entièrement équipée"
+msgstr "Cocina totalmente equipada"
+
+msgid "Four"
+msgstr "Horno"
+
+msgid "Micro-ondes"
+msgstr "Microondas"
+
+msgid "Lave-vaisselle"
+msgstr "Lavavajillas"
+
+msgid "Machine à café"
+msgstr "Cafetera"
+
+msgid "Bouilloire"
+msgstr "Hervidor de agua"
+
+msgid "Grille-pain"
+msgstr "Tostadora"
+
+msgid "Appareil à raclette"
+msgstr "Aparato de raclette"
+
+msgid "Caquelon à fondue"
+msgstr "Juego de fondue"
+
+msgid "Congélateur"
+msgstr "Congelador"
+
+msgid "Confort"
+msgstr "Confort"
+
+msgid "Cheminée"
+msgstr "Chimenea"
+
+msgid "Chauffage au sol"
+msgstr "Calefacción por suelo radiante"
+
+msgid "Linge de lit fourni"
+msgstr "Ropa de cama incluida"
+
+msgid "Serviettes fournies"
+msgstr "Toallas incluidas"
+
+msgid "Sèche-cheveux"
+msgstr "Secador de pelo"
+
+msgid "Fer et table à repasser"
+msgstr "Plancha y tabla de planchar"
+
+msgid "Lave-linge"
+msgstr "Lavadora"
+
+msgid "Sèche-linge"
+msgstr "Secadora"
+
+msgid "Bien-être"
+msgstr "Bienestar"
+
+msgid "Sauna"
+msgstr "Sauna"
+
+msgid "Jacuzzi / spa"
+msgstr "Jacuzzi / spa"
+
+msgid "Hammam"
+msgstr "Hammam"
+
+msgid "Salle de fitness"
+msgstr "Gimnasio"
+
+msgid "Multimédia"
+msgstr "Multimedia"
+
+msgid "Wi-Fi"
+msgstr "Wi-Fi"
+
+msgid "Télévision"
+msgstr "Televisión"
+
+msgid "Netflix / streaming"
+msgstr "Netflix / streaming"
+
+msgid "Enceinte Bluetooth"
+msgstr "Altavoz Bluetooth"
+
+msgid "Espace de travail"
+msgstr "Espacio de trabajo"
+
+msgid "Extérieur"
+msgstr "Exterior"
+
+msgid "Terrasse"
+msgstr "Terraza"
+
+msgid "Balcon"
+msgstr "Balcón"
+
+msgid "Jardin"
+msgstr "Jardín"
+
+msgid "Barbecue"
+msgstr "Barbacoa"
+
+msgid "Mobilier de jardin"
+msgstr "Muebles de jardín"
+
+msgid "Vue sur les montagnes"
+msgstr "Vistas a la montaña"
+
+msgid "Ski & montagne"
+msgstr "Esquí y montaña"
+
+msgid "Chauffe-chaussures de ski"
+msgstr "Calentadores de botas de esquí"
+
+msgid "Ski-in / ski-out"
+msgstr "Esquí a la puerta"
+
+msgid "Arrêt de navette ski à proximité"
+msgstr "Parada de autobús de esquí cercana"
+
+msgid "Enfants"
+msgstr "Niños"
+
+msgid "Lit bébé"
+msgstr "Cuna"
+
+msgid "Chaise haute"
+msgstr "Trona"
+
+msgid "Jeux de société"
+msgstr "Juegos de mesa"
+
+msgid "Pratique"
+msgstr "Práctico"
+
+msgid "Parking privé"
+msgstr "Aparcamiento privado"
+
+msgid "Garage"
+msgstr "Garaje"
+
+msgid "Borne de recharge électrique"
+msgstr "Punto de recarga eléctrica"
+
+msgid "Ascenseur"
+msgstr "Ascensor"
+
+msgid "Arrivée autonome (boîte à clés)"
+msgstr "Llegada autónoma (caja de llaves)"
+
+msgid "Chambres"
+msgstr "Dormitorios"
+
+msgid "Salles de bain"
+msgstr "Baños"
+
+msgid "Lits"
+msgstr "Camas"
+
+msgid "Surface"
+msgstr "Superficie"
+
+msgid "Étages"
+msgstr "Plantas"
+
+msgid "Les pièces"
+msgstr "Las estancias"
+
+msgid "Et aussi"
+msgstr "Y además"
+
+msgid "Équipements"
+msgstr "Equipamiento"
+
+msgid "Inclus dans le prix"
+msgstr "Incluido en el precio"
+
+msgid "En supplément"
+msgstr "Con suplemento"
+
+msgid "Animaux acceptés"
+msgstr "Se admiten mascotas"
+
+msgid "Animaux non acceptés"
+msgstr "No se admiten mascotas"
+
+msgid "Animaux sur demande"
+msgstr "Mascotas bajo petición"
+
+msgid "Fumeurs acceptés"
+msgstr "Se permite fumar"
+
+msgid "Non-fumeur"
+msgstr "No fumadores"
+
+msgid "Fumeurs : sur demande"
+msgstr "Fumar: bajo petición"
+
+msgid "Fêtes autorisées"
+msgstr "Se permiten fiestas"
+
+msgid "Pas de fêtes ni d’événements"
+msgstr "No se permiten fiestas ni eventos"
+
+msgid "Événements sur demande"
+msgstr "Eventos bajo petición"
+
+msgid "Arrivée dès %s"
+msgstr "Llegada a partir de las %s"
+
+msgid "Départ avant %s"
+msgstr "Salida antes de las %s"
+
+msgid "%d personnes maximum"
+msgstr "%d personas como máximo"
+
+msgid "Règlement intérieur"
+msgstr "Normas de la casa"
+
+msgid "Situation et accès"
+msgstr "Ubicación y acceso"
+
+msgid "{chalet} — Demande de réservation reçue"
+msgstr "{chalet} — Solicitud de reserva recibida"
+
+msgid "Bonjour {name},\n\nMerci pour votre demande. Nous la vérifions et revenons vers vous rapidement pour la confirmer.\n\n{summary}\n\nMeilleures salutations,\n{chalet}"
+msgstr "Hola {name}:\n\nGracias por su solicitud. La estamos revisando y le responderemos en breve para confirmarla.\n\n{summary}\n\nUn cordial saludo,\n{chalet}"
+
+msgid "{chalet} — Votre réservation est confirmée"
+msgstr "{chalet} — Su reserva está confirmada"
+
+msgid "Bonjour {name},\n\nNous avons le plaisir de confirmer votre séjour à Verbier.\n\n{summary}\n\nModalités de paiement :\n{payment}\n\nAu plaisir de vous accueillir !\n{chalet}"
+msgstr "Hola {name}:\n\nNos complace confirmar su estancia en Verbier.\n\n{summary}\n\nCondiciones de pago:\n{payment}\n\n¡Esperamos darle la bienvenida!\n{chalet}"
+
+msgid "{chalet} — Votre demande de réservation"
+msgstr "{chalet} — Su solicitud de reserva"
+
+msgid "Bonjour {name},\n\nNous sommes désolés, nous ne pouvons pas donner suite à votre demande pour les dates suivantes :\n\n{summary}\n\nN’hésitez pas à nous contacter pour d’autres dates.\n{chalet}"
+msgstr "Hola {name}:\n\nLo sentimos, pero no podemos aceptar su solicitud para las siguientes fechas:\n\n{summary}\n\nNo dude en contactarnos para otras fechas.\n{chalet}"
+
+msgid "Arrivée : %1$s dès %2$s"
+msgstr "Llegada: %1$s a partir de las %2$s"
+
+msgid "Départ : %1$s avant %2$s"
+msgstr "Salida: %1$s antes de las %2$s"
+
+msgid "Voyageurs : %1$d adulte(s), %2$d enfant(s)"
+msgstr "Huéspedes: %1$d adulto(s), %2$d niño(s)"
+
+msgid "TOTAL : %s"
+msgstr "TOTAL: %s"
+
+msgid "(message d’exemple)"
+msgstr "(mensaje de ejemplo)"
+
+msgid "Tarif standard"
+msgstr "Tarifa estándar"
+
+msgid "%1$s : %2$d × %3$s"
+msgstr "%1$s: %2$d × %3$s"
+
+msgid "Rabais séjour d’une semaine ou plus (%s %%)"
+msgstr "Descuento por estancias de una semana o más (%s %%)"
+
+msgid "Taxe de séjour : %1$d adulte(s) × %2$d nuit(s) × %3$s"
+msgstr "Tasa turística: %1$d adulto(s) × %2$d noche(s) × %3$s"
+
+msgid "Demande refusée."
+msgstr "Solicitud rechazada."
+
+msgid "Trop de demandes. Merci de réessayer plus tard ou de nous contacter directement."
+msgstr "Demasiadas solicitudes. Inténtelo más tarde o contáctenos directamente."
+
+msgid "Merci d’indiquer votre nom, un e-mail valide et un téléphone."
+msgstr "Indique su nombre, un correo electrónico válido y un teléfono."
+
+msgid "Merci d’accepter les conditions de location."
+msgstr "Acepte las condiciones de alquiler."
+
+msgid "Le service est momentanément occupé, veuillez réessayer."
+msgstr "El servicio está ocupado en este momento, inténtelo de nuevo."
+
+msgid "Une erreur est survenue, merci de réessayer."
+msgstr "Se ha producido un error, inténtelo de nuevo."
+
+msgid "Merci ! Votre demande de réservation a bien été envoyée. Vous allez recevoir un e-mail récapitulatif et nous vous confirmerons la réservation rapidement."
+msgstr "¡Gracias! Su solicitud de reserva se ha enviado. Recibirá un resumen por correo electrónico y confirmaremos su reserva en breve."
+
+msgid "Libre"
+msgstr "Libre"
+
+msgid "Dimanche"
+msgstr "Domingo"
+
+msgid "Lundi"
+msgstr "Lunes"
+
+msgid "Mardi"
+msgstr "Martes"
+
+msgid "Mercredi"
+msgstr "Miércoles"
+
+msgid "Jeudi"
+msgstr "Jueves"
+
+msgid "Vendredi"
+msgstr "Viernes"
+
+msgid "Samedi"
+msgstr "Sábado"
+
+msgid "Choisissez votre date d’arrivée."
+msgstr "Elija su fecha de llegada."
+
+msgid "Choisissez votre date de départ."
+msgstr "Elija su fecha de salida."
+
+msgid "Minimum %d nuits"
+msgstr "Mínimo %d noches"
+
+msgid "Arrivées le %s uniquement"
+msgstr "Llegadas solo en %s"
+
+msgid "%d nuits"
+msgstr "%d noches"
+
+msgid "Mois précédent"
+msgstr "Mes anterior"
+
+msgid "Mois suivant"
+msgstr "Mes siguiente"
+
+msgid "dès"
+msgstr "desde"
+
+msgid "/ nuit"
+msgstr "/ noche"
+
+msgid "Disponible"
+msgstr "Disponible"
+
+msgid "Réservé"
+msgstr "Reservado"
+
+msgid "Votre séjour"
+msgstr "Su estancia"
+
+msgid "Adultes"
+msgstr "Adultos"
+
+msgid "Nom et prénom"
+msgstr "Nombre y apellidos"
+
+msgid "Message (heure d’arrivée, forfaits de ski, demandes particulières…)"
+msgstr "Mensaje (hora de llegada, forfaits, peticiones especiales…)"
+
+msgid "Envoyer ma demande de réservation"
+msgstr "Enviar mi solicitud de reserva"
+
+msgid "Aucun paiement n’est demandé à ce stade : nous vous confirmons la disponibilité et les modalités par e-mail."
+msgstr "No se requiere ningún pago en este momento: le confirmaremos la disponibilidad y las condiciones por correo electrónico."

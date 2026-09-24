@@ -15,6 +15,7 @@ Plugin de réservation pour un chalet de location de vacances à Verbier.
 - **Galerie photos** triable (shortcode `[chalet_gallery]`) avec visionneuse plein écran (flèches, clavier, balayage sur mobile).
 - **Conditions générales** rédigées dans l’admin (shortcode `[chalet_terms]`), dépliables et à accepter dans le formulaire.
 - **Description du chalet** (shortcode `[chalet_description]`) : présentation, chiffres clés, pièces avec photo, équipements par catégorie, inclus / en supplément, règlement intérieur, situation et accès. Se remplit dans *Réservations → Description du chalet*.
+- **Multilingue : français, anglais, allemand, espagnol** avec bouton 🌐 de changement de langue (voir ci-dessous).
 - **Back-office sans WordPress** (voir ci-dessous).
 - Protection anti-spam (champ piège + limite de 5 demandes/heure par IP) et verrou contre les réservations simultanées.
 
@@ -44,6 +45,16 @@ Menu **Réservations → Réglages → « Créer la page de gestion »** : crée
 - **Plus** : export CSV (Excel), synchronisation manuelle, journal des e-mails, déconnexion.
 
 **Donner accès à quelqu’un d’autre** (conciergerie, famille…) : *Utilisateurs → Ajouter* avec le rôle **« Gestionnaire du chalet »**. Cette personne n’accède qu’au back-office : wp-admin lui est fermé.
+
+## Langues (FR / EN / DE / ES)
+
+- **Bouton 🌐** en bas à gauche de toutes les pages (désactivable), ou shortcode `[chalet_langues]` à placer où vous voulez. À la première visite, la langue du navigateur est proposée ; le choix est ensuite mémorisé.
+- **Textes du plugin** (calendrier, formulaire, prix, erreurs, équipements, e-mails par défaut) : déjà traduits.
+- **Vos textes** (présentation, pièces, règles, conditions générales, noms de saisons, légendes de photos, titres des pages et du menu, e-mails personnalisés) : à traduire dans **Réservations → Traductions**, avec un lien DeepL par texte. Sans traduction, le français s’affiche.
+- **E-mails** : le client reçoit ses e-mails dans la langue utilisée sur le site ; le propriétaire les reçoit en français.
+- Choix des langues proposées : **Réservations → Réglages → Langues du site**.
+- Le back-office et l’administration restent en français.
+- Si Polylang, WPML ou TranslatePress est installé, le plugin suit sa langue et masque son propre bouton.
 
 ## E-mails : si vous ne les recevez pas
 
@@ -91,8 +102,10 @@ chalet-booking/
 │   ├── class-cb-admin.php        Pages d’administration (wp-admin)
 │   ├── class-cb-content.php      Galerie photos et conditions générales
 │   ├── class-cb-description.php  Description du chalet (pièces, équipements, règles)
+│   ├── class-cb-i18n.php         Langues : sélecteur, traductions, e-mails dans la langue du client
 │   ├── class-cb-backoffice.php   Back-office : accès, rôle, page plein écran
 │   └── class-cb-manage-api.php   API privée du back-office
+├── languages/                    Traductions EN / DE / ES (.po / .mo) et modèle .pot
 └── assets/                       JS / CSS (réservation, galerie, back-office)
 ```
 

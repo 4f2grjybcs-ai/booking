@@ -1,0 +1,1833 @@
+# Copyright (C) 2026 Chalet Verbier
+# This file is distributed under the GPL-2.0-or-later.
+msgid ""
+msgstr ""
+"Project-Id-Version: Chalet Booking 1.2.0\n"
+"Report-Msgid-Bugs-To: https://wordpress.org/support/plugin/chalet-booking\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"POT-Creation-Date: 2026-09-24T13:56:12+00:00\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"X-Generator: WP-CLI 2.12.0\n"
+"X-Domain: chalet-booking\n"
+
+#. Plugin Name of the plugin
+#: chalet-booking.php
+msgid "Chalet Booking"
+msgstr ""
+
+#. Description of the plugin
+#: chalet-booking.php
+msgid "Réservation en ligne pour un chalet de location de vacances (calendrier de disponibilités, tarifs par saison, demandes de réservation, synchronisation iCal)."
+msgstr ""
+
+#. Author of the plugin
+#: chalet-booking.php
+msgid "Chalet Verbier"
+msgstr ""
+
+#: includes/class-cb-admin.php:29
+#: includes/class-cb-admin.php:30
+#: includes/class-cb-admin.php:104
+msgid "Réservations"
+msgstr ""
+
+#: includes/class-cb-admin.php:30
+msgid "Toutes les réservations"
+msgstr ""
+
+#: includes/class-cb-admin.php:31
+msgid "Ajouter / bloquer"
+msgstr ""
+
+#: includes/class-cb-admin.php:32
+msgid "Réglages"
+msgstr ""
+
+#: includes/class-cb-admin.php:33
+msgid "E-mails"
+msgstr ""
+
+#: includes/class-cb-admin.php:34
+msgid "Photos & conditions"
+msgstr ""
+
+#: includes/class-cb-admin.php:39
+msgid "En attente"
+msgstr ""
+
+#: includes/class-cb-admin.php:40
+msgid "Confirmée"
+msgstr ""
+
+#: includes/class-cb-admin.php:41
+msgid "Annulée"
+msgstr ""
+
+#: includes/class-cb-admin.php:42
+#: includes/class-cb-admin.php:265
+msgid "Dates bloquées"
+msgstr ""
+
+#: includes/class-cb-admin.php:58
+msgid "Réservation confirmée, e-mail envoyé au client."
+msgstr ""
+
+#: includes/class-cb-admin.php:59
+msgid "Réservation annulée."
+msgstr ""
+
+#: includes/class-cb-admin.php:60
+msgid "Entrée supprimée."
+msgstr ""
+
+#: includes/class-cb-admin.php:61
+msgid "Entrée ajoutée."
+msgstr ""
+
+#: includes/class-cb-admin.php:62
+msgid "Calendriers externes synchronisés."
+msgstr ""
+
+#: includes/class-cb-admin.php:63
+msgid "E-mail de test envoyé. Vérifiez votre boîte de réception (et le dossier spam)."
+msgstr ""
+
+#: includes/class-cb-admin.php:64
+msgid "Échec de l’envoi de l’e-mail de test. Voir le détail dans le journal ci-dessous."
+msgstr ""
+
+#: includes/class-cb-admin.php:65
+msgid "Impossible : ces dates chevauchent une autre réservation."
+msgstr ""
+
+#: includes/class-cb-admin.php:66
+#: includes/class-cb-manage-api.php:407
+msgid "Dates invalides."
+msgstr ""
+
+#: includes/class-cb-admin.php:105
+msgid "Ajouter / bloquer des dates"
+msgstr ""
+
+#: includes/class-cb-admin.php:110
+msgid "Tous"
+msgstr ""
+
+#: includes/class-cb-admin.php:116
+msgid "Afficher aussi les séjours passés"
+msgstr ""
+
+#: includes/class-cb-admin.php:118
+msgid "Séjours à venir uniquement"
+msgstr ""
+
+#: includes/class-cb-admin.php:127
+#: includes/class-cb-admin.php:196
+msgid "Statut"
+msgstr ""
+
+#: includes/class-cb-admin.php:128
+#: includes/class-cb-admin.php:269
+msgid "Arrivée"
+msgstr ""
+
+#: includes/class-cb-admin.php:129
+#: includes/class-cb-admin.php:270
+msgid "Départ"
+msgstr ""
+
+#: includes/class-cb-admin.php:130
+#: includes/class-cb-admin.php:198
+msgid "Client"
+msgstr ""
+
+#: includes/class-cb-admin.php:131
+#: includes/class-cb-admin.php:199
+#: includes/class-cb-admin.php:274
+#: includes/class-cb-description.php:258
+msgid "Voyageurs"
+msgstr ""
+
+#: includes/class-cb-admin.php:132
+#: includes/class-cb-shortcode.php:43
+msgid "Total"
+msgstr ""
+
+#: includes/class-cb-admin.php:133
+msgid "Actions"
+msgstr ""
+
+#: includes/class-cb-admin.php:138
+msgid "Aucune réservation."
+msgstr ""
+
+#: includes/class-cb-admin.php:171
+msgid "Confirmer"
+msgstr ""
+
+#: includes/class-cb-admin.php:174
+msgid "Annuler cette réservation ?"
+msgstr ""
+
+#: includes/class-cb-admin.php:174
+msgid "Annuler"
+msgstr ""
+
+#: includes/class-cb-admin.php:177
+msgid "Supprimer définitivement ?"
+msgstr ""
+
+#: includes/class-cb-admin.php:177
+#: includes/class-cb-admin.php:479
+#: includes/class-cb-description.php:501
+msgid "Supprimer"
+msgstr ""
+
+#: includes/class-cb-admin.php:185
+#: includes/class-cb-manage-api.php:221
+#: includes/class-cb-manage-api.php:305
+#: includes/class-cb-manage-api.php:338
+#: includes/class-cb-manage-api.php:349
+msgid "Réservation introuvable."
+msgstr ""
+
+#. translators: %d: numéro
+#: includes/class-cb-admin.php:193
+#, php-format
+msgid "Réservation #%d"
+msgstr ""
+
+#. translators: %d: numéro
+#: includes/class-cb-admin.php:194
+msgid "Retour à la liste"
+msgstr ""
+
+#: includes/class-cb-admin.php:197
+msgid "Dates"
+msgstr ""
+
+#. translators: 1: adultes, 2: enfants
+#: includes/class-cb-admin.php:199
+#, php-format
+msgid "%1$d adulte(s), %2$d enfant(s)"
+msgstr ""
+
+#. translators: 1: adultes, 2: enfants
+#: includes/class-cb-admin.php:200
+#: includes/class-cb-admin.php:613
+msgid "Message"
+msgstr ""
+
+#: includes/class-cb-admin.php:201
+msgid "Prix"
+msgstr ""
+
+#: includes/class-cb-admin.php:209
+msgid "Reçue le"
+msgstr ""
+
+#: includes/class-cb-admin.php:220
+#: includes/class-cb-admin.php:290
+#: includes/class-cb-admin.php:336
+#: includes/class-cb-admin.php:688
+#: includes/class-cb-backoffice.php:98
+#: includes/class-cb-i18n.php:439
+msgid "Action non autorisée."
+msgstr ""
+
+#: includes/class-cb-admin.php:256
+msgid "Ajouter une réservation ou bloquer des dates"
+msgstr ""
+
+#: includes/class-cb-admin.php:258
+msgid "Pour une réservation prise par téléphone, choisissez « Réservation confirmée ». Pour un usage personnel ou des travaux, choisissez « Dates bloquées »."
+msgstr ""
+
+#: includes/class-cb-admin.php:263
+msgid "Type"
+msgstr ""
+
+#: includes/class-cb-admin.php:266
+msgid "Réservation confirmée"
+msgstr ""
+
+#: includes/class-cb-admin.php:271
+msgid "Nom / note"
+msgstr ""
+
+#: includes/class-cb-admin.php:272
+#: includes/class-cb-shortcode.php:101
+msgid "E-mail"
+msgstr ""
+
+#: includes/class-cb-admin.php:273
+#: includes/class-cb-shortcode.php:104
+msgid "Téléphone"
+msgstr ""
+
+#: includes/class-cb-admin.php:275
+#: includes/class-cb-emails.php:77
+msgid "adultes"
+msgstr ""
+
+#: includes/class-cb-admin.php:276
+#: includes/class-cb-emails.php:78
+msgid "enfants"
+msgstr ""
+
+#: includes/class-cb-admin.php:278
+msgid "Prix total"
+msgstr ""
+
+#: includes/class-cb-admin.php:278
+msgid "Vide = calcul automatique"
+msgstr ""
+
+#: includes/class-cb-admin.php:279
+msgid "Notes internes"
+msgstr ""
+
+#: includes/class-cb-admin.php:280
+msgid "E-mail au client"
+msgstr ""
+
+#: includes/class-cb-admin.php:280
+msgid "Envoyer l’e-mail de confirmation (réservation confirmée uniquement)"
+msgstr ""
+
+#: includes/class-cb-admin.php:282
+msgid "Enregistrer"
+msgstr ""
+
+#: includes/class-cb-admin.php:368
+msgid "Réglages du chalet"
+msgstr ""
+
+#. translators: %s: shortcode
+#: includes/class-cb-admin.php:371
+#, php-format
+msgid "Insérez le shortcode %s dans une page pour afficher le calendrier et le formulaire de réservation."
+msgstr ""
+
+#: includes/class-cb-admin.php:374
+msgid "Back-office (gestion sans WordPress)"
+msgstr ""
+
+#: includes/class-cb-admin.php:377
+msgid "Votre espace de gestion :"
+msgstr ""
+
+#: includes/class-cb-admin.php:378
+msgid "Ajoutez-le à l’écran d’accueil de votre téléphone pour l’utiliser comme une application."
+msgstr ""
+
+#: includes/class-cb-admin.php:380
+msgid "Créez la page de gestion (tableau de bord, calendrier, réservations, paiements, tarifs, statistiques) accessible depuis votre site, sur ordinateur ou téléphone."
+msgstr ""
+
+#: includes/class-cb-admin.php:384
+msgid "Créer la page de gestion"
+msgstr ""
+
+#. translators: %s: lien vers Utilisateurs
+#: includes/class-cb-admin.php:391
+#, php-format
+msgid "Pour donner accès à une autre personne (conciergerie, famille…) sans lui ouvrir WordPress : %s et choisissez le rôle « Gestionnaire du chalet »."
+msgstr ""
+
+#: includes/class-cb-admin.php:392
+msgid "créez un utilisateur"
+msgstr ""
+
+#: includes/class-cb-admin.php:401
+msgid "Chalet"
+msgstr ""
+
+#: includes/class-cb-admin.php:404
+msgid "Nom du chalet"
+msgstr ""
+
+#: includes/class-cb-admin.php:405
+msgid "Capacité maximale (personnes)"
+msgstr ""
+
+#: includes/class-cb-admin.php:406
+msgid "Heure d’arrivée"
+msgstr ""
+
+#: includes/class-cb-admin.php:407
+msgid "Heure de départ"
+msgstr ""
+
+#: includes/class-cb-admin.php:408
+msgid "E-mail de notification"
+msgstr ""
+
+#: includes/class-cb-admin.php:408
+msgid "Reçoit les nouvelles demandes de réservation. Expéditeur et contenu des e-mails : menu Réservations → E-mails."
+msgstr ""
+
+#: includes/class-cb-admin.php:409
+msgid "Lien vers les conditions de location"
+msgstr ""
+
+#: includes/class-cb-admin.php:409
+msgid "Optionnel : lien vers une page externe. Sinon, rédigez vos conditions dans Réservations → Photos & conditions."
+msgstr ""
+
+#: includes/class-cb-admin.php:411
+msgid "Modalités de paiement"
+msgstr ""
+
+#: includes/class-cb-admin.php:413
+msgid "Ajoutées à l’e-mail de confirmation (ex. acompte de 30 % sous 7 jours, IBAN, solde 30 jours avant l’arrivée, caution…)."
+msgstr ""
+
+#: includes/class-cb-admin.php:417
+msgid "Langues du site"
+msgstr ""
+
+#: includes/class-cb-admin.php:419
+msgid "Langues proposées"
+msgstr ""
+
+#: includes/class-cb-admin.php:421
+msgid "(langue principale)"
+msgstr ""
+
+#: includes/class-cb-admin.php:425
+msgid "Traduisez vos propres textes (description, conditions, titres de pages…) dans Réservations → Traductions."
+msgstr ""
+
+#: includes/class-cb-admin.php:427
+msgid "Bouton de langue"
+msgstr ""
+
+#: includes/class-cb-admin.php:428
+msgid "Afficher le bouton 🌐 de changement de langue en bas à gauche de toutes les pages"
+msgstr ""
+
+#. translators: %s: shortcode
+#: includes/class-cb-admin.php:429
+#, php-format
+msgid "Vous pouvez aussi placer le sélecteur où vous voulez (ex. dans l’en-tête) avec le shortcode %s."
+msgstr ""
+
+#: includes/class-cb-admin.php:433
+msgid "Tarifs et règles"
+msgstr ""
+
+#: includes/class-cb-admin.php:436
+msgid "Devise"
+msgstr ""
+
+#: includes/class-cb-admin.php:437
+msgid "Prix par nuit hors saison"
+msgstr ""
+
+#: includes/class-cb-admin.php:437
+msgid "Utilisé pour toute date qui n’est dans aucune saison ci-dessous."
+msgstr ""
+
+#: includes/class-cb-admin.php:438
+msgid "Nuits minimum hors saison"
+msgstr ""
+
+#: includes/class-cb-admin.php:439
+#: includes/class-cb-pricing.php:71
+msgid "Frais de nettoyage final"
+msgstr ""
+
+#: includes/class-cb-admin.php:440
+msgid "Taxe de séjour par adulte et par nuit"
+msgstr ""
+
+#: includes/class-cb-admin.php:440
+msgid "Vérifiez le montant en vigueur auprès de la commune de Val de Bagnes / Verbier Tourisme. 0 = non facturée."
+msgstr ""
+
+#: includes/class-cb-admin.php:441
+msgid "Rabais dès 7 nuits (%)"
+msgstr ""
+
+#: includes/class-cb-admin.php:442
+msgid "Délai minimum avant l’arrivée (jours)"
+msgstr ""
+
+#: includes/class-cb-admin.php:443
+msgid "Réservable jusqu’à (mois à l’avance)"
+msgstr ""
+
+#: includes/class-cb-admin.php:447
+msgid "Saisons"
+msgstr ""
+
+#: includes/class-cb-admin.php:448
+msgid "Définissez vos périodes tarifaires (Noël / Nouvel An, vacances de février, haute saison d’hiver, Pâques, été, Verbier Festival…). Les dates sont incluses. Le « jour d’arrivée » impose par exemple des séjours samedi → samedi."
+msgstr ""
+
+#: includes/class-cb-admin.php:451
+msgid "Nom"
+msgstr ""
+
+#: includes/class-cb-admin.php:452
+msgid "Du"
+msgstr ""
+
+#: includes/class-cb-admin.php:453
+msgid "Au"
+msgstr ""
+
+#: includes/class-cb-admin.php:454
+msgid "Prix / nuit"
+msgstr ""
+
+#: includes/class-cb-admin.php:455
+msgid "Nuits min."
+msgstr ""
+
+#: includes/class-cb-admin.php:456
+msgid "Jour d’arrivée/départ"
+msgstr ""
+
+#: includes/class-cb-admin.php:469
+msgid "ex. Noël / Nouvel An"
+msgstr ""
+
+#: includes/class-cb-admin.php:484
+msgid "+ Ajouter une saison"
+msgstr ""
+
+#: includes/class-cb-admin.php:486
+msgid "Synchronisation des calendriers (iCal)"
+msgstr ""
+
+#: includes/class-cb-admin.php:488
+msgid "Lien d’export"
+msgstr ""
+
+#: includes/class-cb-admin.php:490
+msgid "À coller dans Airbnb, Booking.com, etc. (« Importer un calendrier ») pour qu’ils bloquent les dates réservées ici."
+msgstr ""
+
+#: includes/class-cb-admin.php:491
+msgid "Générer un nouveau lien (l’ancien cessera de fonctionner)"
+msgstr ""
+
+#: includes/class-cb-admin.php:493
+msgid "Calendriers à importer"
+msgstr ""
+
+#: includes/class-cb-admin.php:495
+msgid "Une URL .ics par ligne (Airbnb, Booking.com, Google Agenda…). Les dates sont bloquées ici automatiquement, synchronisation toutes les heures."
+msgstr ""
+
+#: includes/class-cb-admin.php:503
+msgid "Dernière synchronisation"
+msgstr ""
+
+#. translators: %d: nombre
+#: includes/class-cb-admin.php:508
+#, php-format
+msgid "%d événement"
+msgid_plural "%d événements"
+msgstr[0] ""
+msgstr[1] ""
+
+#: includes/class-cb-admin.php:515
+msgid "Synchroniser maintenant"
+msgstr ""
+
+#: includes/class-cb-admin.php:572
+msgid "E-mails automatiques"
+msgstr ""
+
+#: includes/class-cb-admin.php:577
+msgid "Vous ne recevez pas les e-mails ? Par défaut, WordPress envoie les e-mails via le serveur de l’hébergeur, souvent bloqué ou classé en spam. La solution fiable est d’envoyer via le SMTP de votre messagerie (Infomaniak, Gmail, Microsoft 365…) : remplissez la section SMTP ci-dessous, puis utilisez « Envoyer un e-mail de test »."
+msgstr ""
+
+#: includes/class-cb-admin.php:583
+msgid "Expéditeur"
+msgstr ""
+
+#: includes/class-cb-admin.php:585
+msgid "Nom de l’expéditeur"
+msgstr ""
+
+#: includes/class-cb-admin.php:588
+msgid "Adresse de l’expéditeur"
+msgstr ""
+
+#: includes/class-cb-admin.php:590
+msgid "Utilisez une adresse de votre propre domaine (celle du SMTP si vous en configurez un), sinon les e-mails risquent d’arriver en spam. Les réponses des clients vont à l’e-mail de notification défini dans les Réglages."
+msgstr ""
+
+#: includes/class-cb-admin.php:592
+msgid "Copie"
+msgstr ""
+
+#: includes/class-cb-admin.php:593
+msgid "Recevoir en copie cachée les e-mails envoyés aux clients"
+msgstr ""
+
+#: includes/class-cb-admin.php:597
+msgid "Contenu des e-mails"
+msgstr ""
+
+#: includes/class-cb-admin.php:598
+msgid "Variables disponibles (remplacées automatiquement) :"
+msgstr ""
+
+#: includes/class-cb-admin.php:604
+msgid "Vider un champ puis enregistrer rétablit le texte par défaut."
+msgstr ""
+
+#: includes/class-cb-admin.php:610
+msgid "Activé"
+msgstr ""
+
+#: includes/class-cb-admin.php:611
+#: includes/class-cb-admin.php:666
+msgid "Objet"
+msgstr ""
+
+#: includes/class-cb-admin.php:618
+msgid "Serveur d’envoi SMTP (recommandé)"
+msgstr ""
+
+#: includes/class-cb-admin.php:619
+msgid "Laissez vide si vous utilisez déjà une extension SMTP (WP Mail SMTP, FluentSMTP…). Exemples : Infomaniak mail.infomaniak.com port 587 TLS ; Gmail smtp.gmail.com port 587 TLS avec un « mot de passe d’application »."
+msgstr ""
+
+#: includes/class-cb-admin.php:621
+msgid "Serveur"
+msgstr ""
+
+#: includes/class-cb-admin.php:622
+msgid "Port"
+msgstr ""
+
+#: includes/class-cb-admin.php:623
+msgid "Chiffrement"
+msgstr ""
+
+#: includes/class-cb-admin.php:627
+msgid "Aucun"
+msgstr ""
+
+#: includes/class-cb-admin.php:630
+msgid "Identifiant"
+msgstr ""
+
+#: includes/class-cb-admin.php:631
+#: includes/class-cb-backoffice.php:184
+msgid "Mot de passe"
+msgstr ""
+
+#: includes/class-cb-admin.php:632
+msgid "•••••••• (enregistré — laisser vide pour conserver)"
+msgstr ""
+
+#: includes/class-cb-admin.php:634
+msgid "Effacer le mot de passe enregistré"
+msgstr ""
+
+#: includes/class-cb-admin.php:643
+msgid "Envoyer un e-mail de test"
+msgstr ""
+
+#: includes/class-cb-admin.php:659
+msgid "Envoyer le test"
+msgstr ""
+
+#: includes/class-cb-admin.php:661
+msgid "Enregistrez vos modifications avant de tester. Le test utilise une réservation fictive."
+msgstr ""
+
+#: includes/class-cb-admin.php:664
+msgid "Journal des derniers envois"
+msgstr ""
+
+#: includes/class-cb-admin.php:666
+msgid "Date"
+msgstr ""
+
+#: includes/class-cb-admin.php:666
+msgid "Destinataire"
+msgstr ""
+
+#: includes/class-cb-admin.php:666
+msgid "Résultat"
+msgstr ""
+
+#: includes/class-cb-admin.php:669
+msgid "Aucun envoi pour le moment."
+msgstr ""
+
+#: includes/class-cb-admin.php:676
+msgid "Envoyé"
+msgstr ""
+
+#: includes/class-cb-admin.php:681
+msgid "« Envoyé » signifie que le serveur a accepté l’e-mail. S’il n’arrive pas, regardez le dossier spam et configurez le SMTP."
+msgstr ""
+
+#: includes/class-cb-admin.php:708
+msgid "Photos & conditions générales"
+msgstr ""
+
+#: includes/class-cb-admin.php:713
+msgid "Galerie photos"
+msgstr ""
+
+#. translators: %s: shortcode
+#: includes/class-cb-admin.php:714
+#, php-format
+msgid "Affichez la galerie avec le shortcode %s (options : columns=\"4\", limit=\"6\"). Glissez-déposez les photos pour changer l’ordre ; la première est mise en avant."
+msgstr ""
+
+#: includes/class-cb-admin.php:718
+msgid "Retirer"
+msgstr ""
+
+#: includes/class-cb-admin.php:721
+msgid "Ajouter des photos"
+msgstr ""
+
+#: includes/class-cb-admin.php:723
+#: includes/class-cb-content.php:26
+msgid "Conditions générales de location"
+msgstr ""
+
+#. translators: %s: shortcode
+#: includes/class-cb-admin.php:724
+#, php-format
+msgid "Affichez-les sur une page avec %s. Dans le formulaire de réservation, le client peut les dérouler et doit les accepter."
+msgstr ""
+
+#: includes/class-cb-admin.php:726
+msgid "Titre"
+msgstr ""
+
+#: includes/class-cb-admin.php:727
+msgid "Acceptation"
+msgstr ""
+
+#: includes/class-cb-admin.php:727
+msgid "Le client doit cocher « J’accepte les conditions » pour envoyer sa demande"
+msgstr ""
+
+#: includes/class-cb-admin.php:740
+msgid "À couvrir par exemple : acompte et solde, caution, annulation, nombre maximum de personnes, animaux, non-fumeur, horaires d’arrivée/départ, ménage, taxe de séjour, responsabilité. Faites-les relire par un professionnel."
+msgstr ""
+
+#: includes/class-cb-admin.php:762
+msgid "Photos du chalet"
+msgstr ""
+
+#: includes/class-cb-admin.php:762
+msgid "Ajouter à la galerie"
+msgstr ""
+
+#: includes/class-cb-availability.php:78
+msgid "Veuillez choisir des dates d’arrivée et de départ valides."
+msgstr ""
+
+#: includes/class-cb-availability.php:81
+msgid "La date de départ doit être après la date d’arrivée."
+msgstr ""
+
+#: includes/class-cb-availability.php:90
+msgid "Cette date d’arrivée n’est plus réservable en ligne. Contactez-nous directement."
+msgstr ""
+
+#: includes/class-cb-availability.php:93
+msgid "Les réservations ne sont pas encore ouvertes pour ces dates."
+msgstr ""
+
+#. translators: %d: nombre de nuits
+#: includes/class-cb-availability.php:100
+#, php-format
+msgid "Séjour minimum de %d nuit pour ces dates."
+msgid_plural "Séjour minimum de %d nuits pour ces dates."
+msgstr[0] ""
+msgstr[1] ""
+
+#. translators: %s: jour de la semaine
+#: includes/class-cb-availability.php:108
+#, php-format
+msgid "En cette période, les arrivées se font uniquement le %s."
+msgstr ""
+
+#. translators: %s: jour de la semaine
+#: includes/class-cb-availability.php:115
+#, php-format
+msgid "En cette période, les départs se font uniquement le %s."
+msgstr ""
+
+#: includes/class-cb-availability.php:121
+msgid "Au moins un adulte est requis."
+msgstr ""
+
+#. translators: %d: capacité maximale
+#: includes/class-cb-availability.php:126
+#, php-format
+msgid "Le chalet accueille %d personnes au maximum."
+msgstr ""
+
+#: includes/class-cb-availability.php:130
+msgid "Désolé, ces dates ne sont plus disponibles."
+msgstr ""
+
+#: includes/class-cb-backoffice.php:40
+msgid "Gestionnaire du chalet"
+msgstr ""
+
+#: includes/class-cb-backoffice.php:104
+msgid "Gestion du chalet"
+msgstr ""
+
+#: includes/class-cb-backoffice.php:119
+msgid "Ouvrir le back-office"
+msgstr ""
+
+#: includes/class-cb-backoffice.php:141
+msgid "Accès refusé"
+msgstr ""
+
+#: includes/class-cb-backoffice.php:141
+msgid "Votre compte n’a pas accès à la gestion du chalet."
+msgstr ""
+
+#: includes/class-cb-backoffice.php:141
+msgid "Se déconnecter"
+msgstr ""
+
+#: includes/class-cb-backoffice.php:149
+msgid "Gestion"
+msgstr ""
+
+#: includes/class-cb-backoffice.php:175
+msgid "Espace de gestion"
+msgstr ""
+
+#: includes/class-cb-backoffice.php:177
+msgid "Identifiant ou mot de passe incorrect."
+msgstr ""
+
+#: includes/class-cb-backoffice.php:183
+msgid "E-mail ou identifiant"
+msgstr ""
+
+#: includes/class-cb-backoffice.php:185
+msgid "Rester connecté"
+msgstr ""
+
+#: includes/class-cb-backoffice.php:186
+msgid "Se connecter"
+msgstr ""
+
+#: includes/class-cb-backoffice.php:192
+msgid "Mot de passe oublié ?"
+msgstr ""
+
+#: includes/class-cb-backoffice.php:215
+#: includes/class-cb-shortcode.php:44
+#: includes/class-cb-shortcode.php:74
+msgid "Chargement…"
+msgstr ""
+
+#: includes/class-cb-content.php:111
+msgid "Fermer"
+msgstr ""
+
+#: includes/class-cb-content.php:112
+msgid "Photo précédente"
+msgstr ""
+
+#: includes/class-cb-content.php:113
+msgid "Photo suivante"
+msgstr ""
+
+#: includes/class-cb-content.php:168
+msgid "conditions générales de location"
+msgstr ""
+
+#. translators: %s: lien vers les conditions
+#: includes/class-cb-content.php:175
+#, php-format
+msgid "J’ai lu et j’accepte les %s."
+msgstr ""
+
+#: includes/class-cb-description.php:30
+msgid "Chambre"
+msgstr ""
+
+#: includes/class-cb-description.php:31
+msgid "Salle de bain"
+msgstr ""
+
+#: includes/class-cb-description.php:32
+msgid "Salle d’eau"
+msgstr ""
+
+#: includes/class-cb-description.php:33
+msgid "WC séparé"
+msgstr ""
+
+#: includes/class-cb-description.php:34
+msgid "Salon"
+msgstr ""
+
+#: includes/class-cb-description.php:35
+msgid "Salle à manger"
+msgstr ""
+
+#: includes/class-cb-description.php:36
+#: includes/class-cb-description.php:48
+msgid "Cuisine"
+msgstr ""
+
+#: includes/class-cb-description.php:37
+msgid "Espace bien-être"
+msgstr ""
+
+#: includes/class-cb-description.php:38
+#: includes/class-cb-description.php:92
+msgid "Local à skis"
+msgstr ""
+
+#: includes/class-cb-description.php:39
+msgid "Autre"
+msgstr ""
+
+#: includes/class-cb-description.php:49
+msgid "Cuisine entièrement équipée"
+msgstr ""
+
+#: includes/class-cb-description.php:50
+msgid "Four"
+msgstr ""
+
+#: includes/class-cb-description.php:51
+msgid "Micro-ondes"
+msgstr ""
+
+#: includes/class-cb-description.php:52
+msgid "Lave-vaisselle"
+msgstr ""
+
+#: includes/class-cb-description.php:53
+msgid "Machine à café"
+msgstr ""
+
+#: includes/class-cb-description.php:54
+msgid "Bouilloire"
+msgstr ""
+
+#: includes/class-cb-description.php:55
+msgid "Grille-pain"
+msgstr ""
+
+#: includes/class-cb-description.php:56
+msgid "Appareil à raclette"
+msgstr ""
+
+#: includes/class-cb-description.php:57
+msgid "Caquelon à fondue"
+msgstr ""
+
+#: includes/class-cb-description.php:58
+msgid "Congélateur"
+msgstr ""
+
+#: includes/class-cb-description.php:60
+msgid "Confort"
+msgstr ""
+
+#: includes/class-cb-description.php:61
+msgid "Cheminée"
+msgstr ""
+
+#: includes/class-cb-description.php:62
+msgid "Chauffage au sol"
+msgstr ""
+
+#: includes/class-cb-description.php:63
+msgid "Linge de lit fourni"
+msgstr ""
+
+#: includes/class-cb-description.php:64
+msgid "Serviettes fournies"
+msgstr ""
+
+#: includes/class-cb-description.php:65
+msgid "Sèche-cheveux"
+msgstr ""
+
+#: includes/class-cb-description.php:66
+msgid "Fer et table à repasser"
+msgstr ""
+
+#: includes/class-cb-description.php:67
+msgid "Lave-linge"
+msgstr ""
+
+#: includes/class-cb-description.php:68
+msgid "Sèche-linge"
+msgstr ""
+
+#: includes/class-cb-description.php:70
+msgid "Bien-être"
+msgstr ""
+
+#: includes/class-cb-description.php:71
+msgid "Sauna"
+msgstr ""
+
+#: includes/class-cb-description.php:72
+msgid "Jacuzzi / spa"
+msgstr ""
+
+#: includes/class-cb-description.php:73
+msgid "Hammam"
+msgstr ""
+
+#: includes/class-cb-description.php:74
+msgid "Salle de fitness"
+msgstr ""
+
+#: includes/class-cb-description.php:76
+msgid "Multimédia"
+msgstr ""
+
+#: includes/class-cb-description.php:77
+msgid "Wi-Fi"
+msgstr ""
+
+#: includes/class-cb-description.php:78
+msgid "Télévision"
+msgstr ""
+
+#: includes/class-cb-description.php:79
+msgid "Netflix / streaming"
+msgstr ""
+
+#: includes/class-cb-description.php:80
+msgid "Enceinte Bluetooth"
+msgstr ""
+
+#: includes/class-cb-description.php:81
+msgid "Espace de travail"
+msgstr ""
+
+#: includes/class-cb-description.php:83
+msgid "Extérieur"
+msgstr ""
+
+#: includes/class-cb-description.php:84
+msgid "Terrasse"
+msgstr ""
+
+#: includes/class-cb-description.php:85
+msgid "Balcon"
+msgstr ""
+
+#: includes/class-cb-description.php:86
+msgid "Jardin"
+msgstr ""
+
+#: includes/class-cb-description.php:87
+msgid "Barbecue"
+msgstr ""
+
+#: includes/class-cb-description.php:88
+msgid "Mobilier de jardin"
+msgstr ""
+
+#: includes/class-cb-description.php:89
+msgid "Vue sur les montagnes"
+msgstr ""
+
+#: includes/class-cb-description.php:91
+msgid "Ski & montagne"
+msgstr ""
+
+#: includes/class-cb-description.php:93
+msgid "Chauffe-chaussures de ski"
+msgstr ""
+
+#: includes/class-cb-description.php:94
+msgid "Ski-in / ski-out"
+msgstr ""
+
+#: includes/class-cb-description.php:95
+msgid "Arrêt de navette ski à proximité"
+msgstr ""
+
+#: includes/class-cb-description.php:97
+#: includes/class-cb-shortcode.php:89
+msgid "Enfants"
+msgstr ""
+
+#: includes/class-cb-description.php:98
+msgid "Lit bébé"
+msgstr ""
+
+#: includes/class-cb-description.php:99
+msgid "Chaise haute"
+msgstr ""
+
+#: includes/class-cb-description.php:100
+msgid "Jeux de société"
+msgstr ""
+
+#: includes/class-cb-description.php:102
+msgid "Pratique"
+msgstr ""
+
+#: includes/class-cb-description.php:103
+msgid "Parking privé"
+msgstr ""
+
+#: includes/class-cb-description.php:104
+msgid "Garage"
+msgstr ""
+
+#: includes/class-cb-description.php:105
+msgid "Borne de recharge électrique"
+msgstr ""
+
+#: includes/class-cb-description.php:106
+msgid "Ascenseur"
+msgstr ""
+
+#: includes/class-cb-description.php:107
+msgid "Arrivée autonome (boîte à clés)"
+msgstr ""
+
+#: includes/class-cb-description.php:259
+#: includes/class-cb-description.php:462
+msgid "Chambres"
+msgstr ""
+
+#: includes/class-cb-description.php:260
+#: includes/class-cb-description.php:463
+msgid "Salles de bain"
+msgstr ""
+
+#: includes/class-cb-description.php:261
+#: includes/class-cb-description.php:464
+msgid "Lits"
+msgstr ""
+
+#: includes/class-cb-description.php:262
+msgid "Surface"
+msgstr ""
+
+#: includes/class-cb-description.php:263
+msgid "Étages"
+msgstr ""
+
+#: includes/class-cb-description.php:280
+#: includes/class-cb-description.php:469
+msgid "Les pièces"
+msgstr ""
+
+#: includes/class-cb-description.php:311
+msgid "Et aussi"
+msgstr ""
+
+#: includes/class-cb-description.php:318
+#: includes/class-cb-description.php:508
+msgid "Équipements"
+msgstr ""
+
+#: includes/class-cb-description.php:328
+#: includes/class-cb-description.php:526
+msgid "Inclus dans le prix"
+msgstr ""
+
+#: includes/class-cb-description.php:333
+#: includes/class-cb-description.php:527
+msgid "En supplément"
+msgstr ""
+
+#: includes/class-cb-description.php:343
+msgid "Animaux acceptés"
+msgstr ""
+
+#: includes/class-cb-description.php:343
+msgid "Animaux non acceptés"
+msgstr ""
+
+#: includes/class-cb-description.php:343
+msgid "Animaux sur demande"
+msgstr ""
+
+#: includes/class-cb-description.php:344
+msgid "Fumeurs acceptés"
+msgstr ""
+
+#: includes/class-cb-description.php:344
+msgid "Non-fumeur"
+msgstr ""
+
+#: includes/class-cb-description.php:344
+msgid "Fumeurs : sur demande"
+msgstr ""
+
+#: includes/class-cb-description.php:345
+msgid "Fêtes autorisées"
+msgstr ""
+
+#: includes/class-cb-description.php:345
+msgid "Pas de fêtes ni d’événements"
+msgstr ""
+
+#: includes/class-cb-description.php:345
+msgid "Événements sur demande"
+msgstr ""
+
+#. translators: %s: heure
+#: includes/class-cb-description.php:350
+#, php-format
+msgid "Arrivée dès %s"
+msgstr ""
+
+#. translators: %s: heure
+#: includes/class-cb-description.php:352
+#, php-format
+msgid "Départ avant %s"
+msgstr ""
+
+#. translators: %d: personnes
+#: includes/class-cb-description.php:354
+#, php-format
+msgid "%d personnes maximum"
+msgstr ""
+
+#: includes/class-cb-description.php:360
+#: includes/class-cb-description.php:531
+msgid "Règlement intérieur"
+msgstr ""
+
+#: includes/class-cb-description.php:368
+#: includes/class-cb-description.php:540
+msgid "Situation et accès"
+msgstr ""
+
+#: includes/class-cb-description.php:386
+#: includes/class-cb-description.php:437
+#: includes/class-cb-i18n.php:237
+msgid "Description du chalet"
+msgstr ""
+
+#: includes/class-cb-description.php:409
+msgid "Non"
+msgstr ""
+
+#: includes/class-cb-description.php:410
+msgid "Oui"
+msgstr ""
+
+#: includes/class-cb-description.php:411
+msgid "Sur demande"
+msgstr ""
+
+#. translators: %s: shortcode
+#: includes/class-cb-description.php:439
+#, php-format
+msgid "Affichez cette description sur une page avec %s. Pour n’afficher qu’une partie : [chalet_description sections=\"rooms,equipment\"] (parties : intro, facts, rooms, equipment, included, rules, access)."
+msgstr ""
+
+#: includes/class-cb-description.php:444
+msgid "Présentation"
+msgstr ""
+
+#: includes/class-cb-description.php:457
+msgid "Chiffres clés"
+msgstr ""
+
+#: includes/class-cb-description.php:460
+msgid "Surface (m²)"
+msgstr ""
+
+#: includes/class-cb-description.php:461
+msgid "Nombre d’étages"
+msgstr ""
+
+#: includes/class-cb-description.php:462
+#: includes/class-cb-description.php:463
+msgid "Vide = compté automatiquement depuis la liste des pièces."
+msgstr ""
+
+#: includes/class-cb-description.php:466
+msgid "Capacité"
+msgstr ""
+
+#. translators: %d: personnes
+#: includes/class-cb-description.php:466
+#, php-format
+msgid "%d personnes (modifiable dans Réglages)."
+msgstr ""
+
+#: includes/class-cb-description.php:470
+msgid "Une ligne par pièce : chambres, salles de bain, salon, cuisine, sauna, local à skis… Glissez-déposez pour changer l’ordre."
+msgstr ""
+
+#: includes/class-cb-description.php:486
+msgid "Choisir une photo"
+msgstr ""
+
+#: includes/class-cb-description.php:486
+msgid "+ Photo"
+msgstr ""
+
+#: includes/class-cb-description.php:489
+msgid "Nom (ex. Chambre parentale)"
+msgstr ""
+
+#: includes/class-cb-description.php:495
+msgid "Étage (ex. 1er étage)"
+msgstr ""
+
+#: includes/class-cb-description.php:496
+msgid "Lits (ex. 1 lit double 180×200)"
+msgstr ""
+
+#: includes/class-cb-description.php:497
+msgid "Description / équipements de la pièce (salle de bain attenante, vue, TV…)"
+msgstr ""
+
+#: includes/class-cb-description.php:500
+msgid "Déplacer"
+msgstr ""
+
+#: includes/class-cb-description.php:506
+msgid "+ Ajouter une pièce"
+msgstr ""
+
+#: includes/class-cb-description.php:520
+msgid "Autres équipements"
+msgstr ""
+
+#: includes/class-cb-description.php:520
+msgid ""
+"Un par ligne, ex. :\n"
+"Baby-foot\n"
+"Piano"
+msgstr ""
+
+#: includes/class-cb-description.php:523
+msgid "Inclus / en supplément"
+msgstr ""
+
+#: includes/class-cb-description.php:526
+msgid "Un élément par ligne."
+msgstr ""
+
+#: includes/class-cb-description.php:527
+msgid ""
+"Un par ligne, ex. :\n"
+"Ménage en cours de séjour : CHF 150\n"
+"Chef à domicile : sur demande\n"
+"Transfert aéroport de Genève : sur demande"
+msgstr ""
+
+#: includes/class-cb-description.php:533
+msgid "Animaux"
+msgstr ""
+
+#: includes/class-cb-description.php:534
+msgid "Fumeurs"
+msgstr ""
+
+#: includes/class-cb-description.php:535
+msgid "Fêtes / événements"
+msgstr ""
+
+#: includes/class-cb-description.php:536
+msgid "Autres règles"
+msgstr ""
+
+#: includes/class-cb-description.php:536
+msgid ""
+"Une par ligne, ex. :\n"
+"Pas de chaussures de ski dans le chalet\n"
+"Silence après 22 h\n"
+"Caution : CHF 1’000"
+msgstr ""
+
+#: includes/class-cb-description.php:538
+msgid "Les horaires d’arrivée/départ et la capacité sont repris automatiquement des Réglages."
+msgstr ""
+
+#: includes/class-cb-description.php:542
+msgid "Distances et accès"
+msgstr ""
+
+#: includes/class-cb-description.php:542
+msgid ""
+"Une par ligne, format « Libellé : valeur », ex. :\n"
+"Télécabine de Médran : 5 min à pied\n"
+"Centre de Verbier : 800 m\n"
+"Arrêt navette gratuite : 100 m\n"
+"Gare du Châble : 15 min en voiture\n"
+"Aéroport de Genève : 2 h en voiture"
+msgstr ""
+
+#: includes/class-cb-description.php:588
+msgid "Photo de la pièce"
+msgstr ""
+
+#: includes/class-cb-emails.php:43
+msgid "Client — demande reçue"
+msgstr ""
+
+#: includes/class-cb-emails.php:44
+msgid "Envoyé au client dès qu’il envoie le formulaire."
+msgstr ""
+
+#: includes/class-cb-emails.php:45
+msgid "{chalet} — Demande de réservation reçue"
+msgstr ""
+
+#: includes/class-cb-emails.php:46
+msgid ""
+"Bonjour {name},\n"
+"\n"
+"Merci pour votre demande. Nous la vérifions et revenons vers vous rapidement pour la confirmer.\n"
+"\n"
+"{summary}\n"
+"\n"
+"Meilleures salutations,\n"
+"{chalet}"
+msgstr ""
+
+#: includes/class-cb-emails.php:49
+msgid "Propriétaire — nouvelle demande"
+msgstr ""
+
+#: includes/class-cb-emails.php:50
+msgid "Envoyé à l’e-mail de notification à chaque nouvelle demande."
+msgstr ""
+
+#: includes/class-cb-emails.php:51
+msgid "[{chalet}] Nouvelle demande de {name} ({check_in} → {check_out})"
+msgstr ""
+
+#: includes/class-cb-emails.php:52
+msgid ""
+"Nouvelle demande de réservation :\n"
+"\n"
+"{name}\n"
+"{email}\n"
+"{phone}\n"
+"\n"
+"{summary}\n"
+"\n"
+"Message :\n"
+"{message}\n"
+"\n"
+"Confirmer ou refuser : {admin_link}"
+msgstr ""
+
+#: includes/class-cb-emails.php:55
+msgid "Client — réservation confirmée"
+msgstr ""
+
+#: includes/class-cb-emails.php:56
+msgid "Envoyé quand vous cliquez sur « Confirmer »."
+msgstr ""
+
+#: includes/class-cb-emails.php:57
+msgid "{chalet} — Votre réservation est confirmée"
+msgstr ""
+
+#: includes/class-cb-emails.php:58
+msgid ""
+"Bonjour {name},\n"
+"\n"
+"Nous avons le plaisir de confirmer votre séjour à Verbier.\n"
+"\n"
+"{summary}\n"
+"\n"
+"Modalités de paiement :\n"
+"{payment}\n"
+"\n"
+"Au plaisir de vous accueillir !\n"
+"{chalet}"
+msgstr ""
+
+#: includes/class-cb-emails.php:61
+msgid "Client — demande refusée"
+msgstr ""
+
+#: includes/class-cb-emails.php:62
+msgid "Envoyé quand vous annulez une demande encore en attente."
+msgstr ""
+
+#: includes/class-cb-emails.php:63
+msgid "{chalet} — Votre demande de réservation"
+msgstr ""
+
+#: includes/class-cb-emails.php:64
+msgid ""
+"Bonjour {name},\n"
+"\n"
+"Nous sommes désolés, nous ne pouvons pas donner suite à votre demande pour les dates suivantes :\n"
+"\n"
+"{summary}\n"
+"\n"
+"N’hésitez pas à nous contacter pour d’autres dates.\n"
+"{chalet}"
+msgstr ""
+
+#: includes/class-cb-emails.php:71
+msgid "nom du client"
+msgstr ""
+
+#: includes/class-cb-emails.php:72
+msgid "e-mail du client"
+msgstr ""
+
+#: includes/class-cb-emails.php:73
+msgid "téléphone du client"
+msgstr ""
+
+#: includes/class-cb-emails.php:74
+msgid "date d’arrivée"
+msgstr ""
+
+#: includes/class-cb-emails.php:75
+msgid "date de départ"
+msgstr ""
+
+#: includes/class-cb-emails.php:76
+msgid "nombre de nuits"
+msgstr ""
+
+#: includes/class-cb-emails.php:79
+msgid "prix total"
+msgstr ""
+
+#: includes/class-cb-emails.php:80
+msgid "récapitulatif complet (dates, voyageurs, détail du prix)"
+msgstr ""
+
+#: includes/class-cb-emails.php:81
+msgid "message du client"
+msgstr ""
+
+#: includes/class-cb-emails.php:82
+msgid "modalités de paiement (réglages)"
+msgstr ""
+
+#: includes/class-cb-emails.php:83
+msgid "numéro de réservation"
+msgstr ""
+
+#: includes/class-cb-emails.php:84
+msgid "lien vers la réservation dans l’admin"
+msgstr ""
+
+#: includes/class-cb-emails.php:85
+msgid "nom du chalet"
+msgstr ""
+
+#. translators: 1: date, 2: heure
+#: includes/class-cb-emails.php:170
+#, php-format
+msgid "Arrivée : %1$s dès %2$s"
+msgstr ""
+
+#. translators: 1: date, 2: heure
+#: includes/class-cb-emails.php:172
+#, php-format
+msgid "Départ : %1$s avant %2$s"
+msgstr ""
+
+#. translators: 1: adultes, 2: enfants
+#: includes/class-cb-emails.php:174
+#, php-format
+msgid "Voyageurs : %1$d adulte(s), %2$d enfant(s)"
+msgstr ""
+
+#. translators: %s: montant
+#: includes/class-cb-emails.php:184
+#, php-format
+msgid "TOTAL : %s"
+msgstr ""
+
+#: includes/class-cb-emails.php:307
+msgid "Le serveur a refusé l’envoi (fonction mail() indisponible ?)."
+msgstr ""
+
+#: includes/class-cb-emails.php:363
+msgid "(message d’exemple)"
+msgstr ""
+
+#: includes/class-cb-i18n.php:232
+msgid "Titres des pages"
+msgstr ""
+
+#: includes/class-cb-i18n.php:254
+msgid "Conditions générales et photos"
+msgstr ""
+
+#: includes/class-cb-i18n.php:262
+msgid "Tarifs et paiement"
+msgstr ""
+
+#: includes/class-cb-i18n.php:270
+msgid "E-mails aux clients (textes personnalisés)"
+msgstr ""
+
+#: includes/class-cb-i18n.php:434
+#: includes/class-cb-i18n.php:492
+msgid "Traductions"
+msgstr ""
+
+#: includes/class-cb-i18n.php:443
+msgid "Langue inconnue."
+msgstr ""
+
+#: includes/class-cb-i18n.php:494
+msgid "Traductions enregistrées."
+msgstr ""
+
+#: includes/class-cb-i18n.php:496
+msgid "Les textes du plugin (calendrier, formulaire, équipements, e-mails par défaut…) sont déjà traduits. Ici, vous traduisez vos propres textes. Un champ vide affiche le texte français. Si vous modifiez un texte français, sa traduction est à refaire."
+msgstr ""
+
+#: includes/class-cb-i18n.php:500
+msgid "(désactivée)"
+msgstr ""
+
+#. translators: 1: traduits, 2: total
+#: includes/class-cb-i18n.php:504
+#, php-format
+msgid "%1$d textes traduits sur %2$d"
+msgstr ""
+
+#: includes/class-cb-i18n.php:507
+msgid "Aucun texte à traduire pour le moment : remplissez d’abord la description du chalet, les conditions générales, etc."
+msgstr ""
+
+#: includes/class-cb-i18n.php:522
+msgid "Traduire avec DeepL ↗"
+msgstr ""
+
+#: includes/class-cb-i18n.php:527
+msgid "Mise en forme HTML autorisée (<strong>, <h3>, <p>…)."
+msgstr ""
+
+#: includes/class-cb-i18n.php:537
+msgid "Enregistrer les traductions"
+msgstr ""
+
+#: includes/class-cb-manage-api.php:247
+msgid "Dates invalides : le départ doit être après l’arrivée."
+msgstr ""
+
+#. translators: 1: nom, 2: arrivée, 3: départ
+#: includes/class-cb-manage-api.php:259
+#, php-format
+msgid "Ces dates chevauchent « %1$s » (%2$s → %3$s)."
+msgstr ""
+
+#. translators: 1: nom, 2: arrivée, 3: départ
+#: includes/class-cb-manage-api.php:259
+msgid "dates bloquées"
+msgstr ""
+
+#: includes/class-cb-manage-api.php:293
+msgid "Enregistrement impossible."
+msgstr ""
+
+#: includes/class-cb-manage-api.php:308
+msgid "Cette réservation vient d’un calendrier externe : modifiez-la sur la plateforme d’origine."
+msgstr ""
+
+#: includes/class-cb-manage-api.php:352
+msgid "Changement de statut impossible."
+msgstr ""
+
+#: includes/class-cb-manage-api.php:380
+msgid "Aucune adresse e-mail valide pour ce client."
+msgstr ""
+
+#: includes/class-cb-manage-api.php:385
+msgid "Modèle inconnu."
+msgstr ""
+
+#: includes/class-cb-manage-api.php:392
+msgid "Objet et message obligatoires."
+msgstr ""
+
+#. translators: %s: erreur
+#: includes/class-cb-manage-api.php:398
+#, php-format
+msgid "Envoi impossible : %s"
+msgstr ""
+
+#: includes/class-cb-pricing.php:30
+msgid "Tarif standard"
+msgstr ""
+
+#. translators: 1: saison, 2: nombre de nuits, 3: prix par nuit
+#: includes/class-cb-pricing.php:53
+#, php-format
+msgid "%1$s : %2$d × %3$s"
+msgstr ""
+
+#. translators: %s: pourcentage
+#: includes/class-cb-pricing.php:63
+#, php-format
+msgid "Rabais séjour d’une semaine ou plus (%s %%)"
+msgstr ""
+
+#. translators: 1: adultes, 2: nuits, 3: montant
+#: includes/class-cb-pricing.php:80
+#, php-format
+msgid "Taxe de séjour : %1$d adulte(s) × %2$d nuit(s) × %3$s"
+msgstr ""
+
+#: includes/class-cb-rest.php:105
+msgid "Demande refusée."
+msgstr ""
+
+#: includes/class-cb-rest.php:112
+msgid "Trop de demandes. Merci de réessayer plus tard ou de nous contacter directement."
+msgstr ""
+
+#: includes/class-cb-rest.php:125
+msgid "Merci d’indiquer votre nom, un e-mail valide et un téléphone."
+msgstr ""
+
+#: includes/class-cb-rest.php:128
+msgid "Merci d’accepter les conditions de location."
+msgstr ""
+
+#: includes/class-cb-rest.php:135
+msgid "Le service est momentanément occupé, veuillez réessayer."
+msgstr ""
+
+#: includes/class-cb-rest.php:165
+#: includes/class-cb-shortcode.php:45
+msgid "Une erreur est survenue, merci de réessayer."
+msgstr ""
+
+#: includes/class-cb-rest.php:173
+msgid "Merci ! Votre demande de réservation a bien été envoyée. Vous allez recevoir un e-mail récapitulatif et nous vous confirmerons la réservation rapidement."
+msgstr ""
+
+#: includes/class-cb-settings.php:159
+msgid "Libre"
+msgstr ""
+
+#: includes/class-cb-settings.php:160
+msgid "Dimanche"
+msgstr ""
+
+#: includes/class-cb-settings.php:161
+msgid "Lundi"
+msgstr ""
+
+#: includes/class-cb-settings.php:162
+msgid "Mardi"
+msgstr ""
+
+#: includes/class-cb-settings.php:163
+msgid "Mercredi"
+msgstr ""
+
+#: includes/class-cb-settings.php:164
+msgid "Jeudi"
+msgstr ""
+
+#: includes/class-cb-settings.php:165
+msgid "Vendredi"
+msgstr ""
+
+#: includes/class-cb-settings.php:166
+msgid "Samedi"
+msgstr ""
+
+#: includes/class-cb-shortcode.php:38
+msgid "Choisissez votre date d’arrivée."
+msgstr ""
+
+#: includes/class-cb-shortcode.php:39
+msgid "Choisissez votre date de départ."
+msgstr ""
+
+#: includes/class-cb-shortcode.php:40
+#, php-format
+msgid "Minimum %d nuits"
+msgstr ""
+
+#: includes/class-cb-shortcode.php:41
+#, php-format
+msgid "Arrivées le %s uniquement"
+msgstr ""
+
+#: includes/class-cb-shortcode.php:42
+#, php-format
+msgid "%d nuits"
+msgstr ""
+
+#: includes/class-cb-shortcode.php:46
+#: includes/class-cb-shortcode.php:62
+msgid "Mois précédent"
+msgstr ""
+
+#: includes/class-cb-shortcode.php:47
+#: includes/class-cb-shortcode.php:63
+msgid "Mois suivant"
+msgstr ""
+
+#: includes/class-cb-shortcode.php:48
+msgid "dès"
+msgstr ""
+
+#: includes/class-cb-shortcode.php:49
+msgid "/ nuit"
+msgstr ""
+
+#: includes/class-cb-shortcode.php:67
+msgid "Disponible"
+msgstr ""
+
+#: includes/class-cb-shortcode.php:68
+msgid "Réservé"
+msgstr ""
+
+#: includes/class-cb-shortcode.php:69
+msgid "Votre séjour"
+msgstr ""
+
+#: includes/class-cb-shortcode.php:82
+msgid "Adultes"
+msgstr ""
+
+#: includes/class-cb-shortcode.php:97
+msgid "Nom et prénom"
+msgstr ""
+
+#: includes/class-cb-shortcode.php:108
+msgid "Message (heure d’arrivée, forfaits de ski, demandes particulières…)"
+msgstr ""
+
+#: includes/class-cb-shortcode.php:115
+msgid "Envoyer ma demande de réservation"
+msgstr ""
+
+#: includes/class-cb-shortcode.php:116
+msgid "Aucun paiement n’est demandé à ce stade : nous vous confirmons la disponibilité et les modalités par e-mail."
+msgstr ""

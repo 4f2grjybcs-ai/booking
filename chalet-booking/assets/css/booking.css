@@ -1,0 +1,157 @@
+/* Chalet Booking — styles du calendrier et du formulaire.
+   Personnalisez les couleurs en surchargeant ces variables dans votre thème. */
+.cb-booking {
+	--cb-accent: #8b2e1f;
+	--cb-accent-soft: #f3e1dc;
+	--cb-free: #eef6ee;
+	--cb-booked: #d9d9d9;
+	--cb-text: #222;
+	--cb-muted: #777;
+	--cb-radius: 6px;
+	color: var(--cb-text);
+	max-width: 760px;
+	margin: 0 auto;
+	font-size: 16px;
+}
+
+.cb-calendar-wrap { position: relative; }
+.cb-calendar-nav {
+	display: flex;
+	justify-content: space-between;
+	position: absolute;
+	inset: 0 0 auto 0;
+	pointer-events: none;
+}
+.cb-calendar-nav button {
+	pointer-events: auto;
+	background: none;
+	border: 0;
+	font-size: 28px;
+	line-height: 1;
+	padding: 0 10px;
+	cursor: pointer;
+	color: var(--cb-text);
+}
+.cb-calendar-nav button:disabled { opacity: .25; cursor: default; }
+
+.cb-calendar {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+	gap: 24px;
+}
+.cb-month-title {
+	text-align: center;
+	font-weight: 600;
+	text-transform: capitalize;
+	margin-bottom: 8px;
+	line-height: 28px;
+}
+.cb-grid {
+	display: grid;
+	grid-template-columns: repeat(7, 1fr);
+	gap: 2px;
+}
+.cb-dow {
+	text-align: center;
+	font-size: 12px;
+	color: var(--cb-muted);
+	padding: 4px 0;
+	text-transform: capitalize;
+}
+.cb-day {
+	aspect-ratio: 1;
+	border: 0;
+	border-radius: var(--cb-radius);
+	background: transparent;
+	color: var(--cb-muted);
+	font: inherit;
+	font-size: 14px;
+	padding: 0;
+	cursor: default;
+}
+.cb-day.cb-available {
+	background: var(--cb-free);
+	color: var(--cb-text);
+	cursor: pointer;
+}
+.cb-day.cb-available:hover { outline: 2px solid var(--cb-accent); }
+.cb-day.cb-booked,
+.cb-day.cb-booked-start.cb-past,
+.cb-day.cb-booked-end.cb-past { background: var(--cb-booked); text-decoration: line-through; }
+/* Jours de rotation : départ d'un client le matin / arrivée d'un autre l'après-midi. */
+.cb-day.cb-booked-start { background: linear-gradient(135deg, var(--cb-free) 50%, var(--cb-booked) 50%); }
+.cb-day.cb-booked-end { background: linear-gradient(135deg, var(--cb-booked) 50%, var(--cb-free) 50%); }
+.cb-day.cb-booked-start:not(.cb-available) { background: linear-gradient(135deg, transparent 50%, var(--cb-booked) 50%); }
+.cb-day.cb-can-depart { font-weight: 600; }
+.cb-day.cb-sel { background: var(--cb-accent-soft); color: var(--cb-text); }
+.cb-day.cb-sel-start,
+.cb-day.cb-sel-end { background: var(--cb-accent); color: #fff; font-weight: 600; }
+
+.cb-legend {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 16px;
+	list-style: none;
+	padding: 0;
+	margin: 12px 0 0;
+	font-size: 13px;
+	color: var(--cb-muted);
+}
+.cb-legend li { display: flex; align-items: center; gap: 6px; margin: 0; }
+.cb-swatch { width: 14px; height: 14px; border-radius: 3px; display: inline-block; }
+.cb-swatch-free { background: var(--cb-free); }
+.cb-swatch-booked { background: var(--cb-booked); }
+.cb-swatch-selected { background: var(--cb-accent); }
+
+.cb-summary { margin: 20px 0; }
+.cb-hint { color: var(--cb-muted); margin: 0 0 6px; }
+.cb-dates { font-weight: 600; margin: 0 0 10px; }
+.cb-error {
+	background: #fdecea;
+	color: #8a1c1c;
+	padding: 10px 14px;
+	border-radius: var(--cb-radius);
+}
+.cb-quote-table { width: 100%; border-collapse: collapse; }
+.cb-quote-table td,
+.cb-quote-table th { padding: 6px 0; border-bottom: 1px solid #eee; text-align: left; }
+.cb-quote-table td:last-child,
+.cb-quote-table th:last-child { text-align: right; white-space: nowrap; }
+.cb-quote-table tfoot th { font-size: 1.1em; border-bottom: 0; padding-top: 10px; }
+
+.cb-form { display: grid; gap: 14px; }
+.cb-form label { display: grid; gap: 4px; font-size: 14px; }
+.cb-form input[type="text"],
+.cb-form input[type="email"],
+.cb-form input[type="tel"],
+.cb-form select,
+.cb-form textarea {
+	width: 100%;
+	box-sizing: border-box;
+	padding: 8px 10px;
+	border: 1px solid #ccc;
+	border-radius: var(--cb-radius);
+	font: inherit;
+}
+.cb-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 14px; }
+.cb-check { display: flex !important; align-items: flex-start; gap: 8px !important; }
+.cb-hp { position: absolute; left: -9999px; width: 1px; height: 1px; overflow: hidden; }
+.cb-submit {
+	background: var(--cb-accent);
+	color: #fff;
+	border: 0;
+	border-radius: var(--cb-radius);
+	padding: 12px 20px;
+	font: inherit;
+	font-weight: 600;
+	cursor: pointer;
+}
+.cb-submit:disabled { opacity: .6; cursor: wait; }
+.cb-note { font-size: 13px; color: var(--cb-muted); margin: 0; }
+.cb-success {
+	background: #e8f5e9;
+	color: #1b5e20;
+	padding: 16px 20px;
+	border-radius: var(--cb-radius);
+}
+.cb-booking [hidden] { display: none !important; }

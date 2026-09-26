@@ -19,6 +19,8 @@ function fvr_default_settings(): array
         'ref_prefix'        => 'FV',
         'max_days_ahead'    => 365,
         'booking_until'     => '',
+        'close_mode'        => 'eve',   // 'eve' = fermé la veille à close_time ; 'hours' = min_hours_before heures avant
+        'close_time'        => '18:00',
         'min_hours_before'  => 24,
     ] + fvr_mail_defaults();
 }
@@ -78,12 +80,30 @@ function fvr_booking_last_day(): string
 }
 
 /**
- * Premier moment réservable en ligne (délai minimum avant le vol), au format « Y-m-d H:i » (heure du site).
+ * Premier moment réservable en ligne, au format « Y-m-d H:i » (heure du site).
+ * Mode « veille » : le jour J ferme la veille à l'heure choisie (ex. 18:00) ;
+ * mode « heures » : au plus tard X heures avant le vol.
  */
 function fvr_booking_cutoff(): string
 {
-    $hours = max(0, (int) fvr_settings()['min_hours_before']);
-    return wp_date('Y-m-d H:i', time() + $hours * HOUR_IN_SECONDS);
+    $s = fvr_settings();
+    if ($s['close_mode'] === 'eve') {
+        $today = fvr_today();
+        $days = current_time('H:i') < $s['close_time'] ? 1 : 2;
+        return gmdate('Y-m-d', strtotime($today . ' 12:00:00 +' . $days . ' days')) . ' 00:00';
+    }
+    return wp_date('Y-m-d H:i', time() + max(0, (int) $s['min_hours_before']) * HOUR_IN_SECONDS);
+}
+
+// Règle de fermeture en clair : « jusqu'à la veille à 18h00 », « jusqu'à 24 h avant le vol »…
+function fvr_booking_rule_text(): string
+{
+    $s = fvr_settings();
+    if ($s['close_mode'] === 'eve') {
+        return 'jusqu\'à la veille à ' . str_replace(':', 'h', $s['close_time']);
+    }
+    $h = (int) $s['min_hours_before'];
+    return $h ? 'jusqu\'à ' . $h . ' h avant le vol' : '';
 }
 
 /**

@@ -177,7 +177,14 @@
   }
 
   // Dates possibles : d'aujourd'hui (heure suisse du site) à +maxDays jours
-  dateEl.min = fvrConfig.today;
+  // Délai minimum avant le vol (ex. 24 h) : pas de date plus proche
+  dateEl.min = fvrConfig.minDate && fvrConfig.minDate > fvrConfig.today ? fvrConfig.minDate : fvrConfig.today;
+  if (fvrConfig.minHours > 0) {
+    var note = document.createElement('p');
+    note.className = 'fvr-muted fvr-deadline';
+    note.textContent = 'Réservation en ligne jusqu\'à ' + fvrConfig.minHours + ' h avant le vol. Pour un vol plus proche, appelez-nous.';
+    slotsEl.parentNode.insertBefore(note, slotsEl);
+  }
   var max = new Date(fvrConfig.today + 'T12:00:00');
   max.setDate(max.getDate() + fvrConfig.maxDays);
   dateEl.max = max.toISOString().slice(0, 10);

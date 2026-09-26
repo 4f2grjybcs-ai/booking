@@ -12,6 +12,8 @@ add_shortcode('reservation_parapente', function () {
         'api'     => esc_url_raw(rest_url('fvr/v1/')),
         'maxDays' => (int) fvr_settings()['max_days_ahead'],
         'maxDate' => fvr_booking_last_day(),
+        'minDate' => substr(fvr_booking_cutoff(), 0, 10),
+        'minHours' => (int) fvr_settings()['min_hours_before'],
         'today'   => fvr_today(),
     ]);
 

@@ -110,3 +110,5 @@
 .fvr-terms-body { padding: 8px 20px; overflow-y: auto; font-size: 15px; line-height: 1.55; }
 .fvr-terms-close { border: 0; background: none; font-size: 26px; line-height: 1; cursor: pointer; color: var(--fvr-muted); }
 .fvr-terms-accept { border: 0; border-radius: 8px; background: var(--fvr-accent); color: #fff; padding: .6rem 1.2rem; font: inherit; font-weight: 600; cursor: pointer; }
+
+.fvr-deadline { font-size: .9rem; margin: -.25rem 0 .75rem; }

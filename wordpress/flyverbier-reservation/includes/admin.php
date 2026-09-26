@@ -191,6 +191,7 @@ add_action('admin_post_fvr', function () {
             $until = (string) ($p['booking_until'] ?? '');
             update_option('fvr_settings', array_merge(fvr_settings(), [
                 'booking_until'  => fvr_valid_date($until) ? $until : '',
+                'min_hours_before' => max(0, (int) ($p['min_hours_before'] ?? 24)),
                 'max_days_ahead' => max(1, (int) ($p['max_days_ahead'] ?? 365)),
             ]));
             fvr_back($settingsUrl, 'Période de réservation enregistrée.');
@@ -562,11 +563,14 @@ function fvr_page_settings(): void
       ?>
       <div class="fvr-panel">
         <h2>Période de réservation en ligne</h2>
-        <p>Les clients peuvent réserver jusqu'au <strong><?php echo esc_html(fvr_format_date($last)); ?></strong>.
+        <p>Les clients peuvent réserver <strong><?php echo (int) $s['min_hours_before'] ? 'au plus tard ' . (int) $s['min_hours_before'] . ' h avant le vol' : 'jusqu\'au dernier moment'; ?></strong>,
+          et jusqu'au <strong><?php echo esc_html(fvr_format_date($last)); ?></strong>.
           Au-delà, aucun créneau n'est proposé sur le site (vous pouvez toujours ajouter des réservations vous-même).</p>
         <?php echo fvr_form_open('save_period', 'class="fvr-grid"'); ?>
           <label>Réservations ouvertes jusqu'au (facultatif)
             <input type="date" name="booking_until" id="fvr-until" value="<?php echo esc_attr($until); ?>"></label>
+          <label>Délai minimum avant le vol (heures, 0 = aucun)
+            <input type="number" min="0" max="720" name="min_hours_before" value="<?php echo (int) $s['min_hours_before']; ?>"></label>
           <label>Et au maximum (jours à l'avance)
             <input type="number" min="1" name="max_days_ahead" value="<?php echo (int) $s['max_days_ahead']; ?>"></label>
           <div class="fvr-quick">

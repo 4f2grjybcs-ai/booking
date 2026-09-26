@@ -19,6 +19,7 @@ function fvr_default_settings(): array
         'ref_prefix'        => 'FV',
         'max_days_ahead'    => 365,
         'booking_until'     => '',
+        'min_hours_before'  => 24,
     ] + fvr_mail_defaults();
 }
 
@@ -77,6 +78,15 @@ function fvr_booking_last_day(): string
 }
 
 /**
+ * Premier moment réservable en ligne (délai minimum avant le vol), au format « Y-m-d H:i » (heure du site).
+ */
+function fvr_booking_cutoff(): string
+{
+    $hours = max(0, (int) fvr_settings()['min_hours_before']);
+    return wp_date('Y-m-d H:i', time() + $hours * HOUR_IN_SECONDS);
+}
+
+/**
  * Places restantes par créneau pour une date. [] si la date est fermée ou hors période.
  */
 function fvr_availability(string $date): array
@@ -99,12 +109,16 @@ function fvr_availability(string $date): array
         $taken[$r['time']] = (int) $r['taken'];
     }
 
-    $nowTime = current_time('H:i');
+    // Délai minimum (ex. 24 h) : les créneaux trop proches ne sont plus proposés en ligne
+    $cutoff = max(fvr_booking_cutoff(), current_time('Y-m-d H:i'));
+    if ($date < substr($cutoff, 0, 10)) {
+        return [];
+    }
     $events = fvr_events_between($date, $date);
     $out = [];
     foreach ($wpdb->get_results('SELECT time, capacity, valid_until FROM ' . fvr_table('slots') . ' WHERE active = 1 ORDER BY time', ARRAY_A) as $s) {
         // Créneau passé, ou disponible seulement jusqu'à une certaine date
-        if (($date === $today && $s['time'] <= $nowTime) || (!empty($s['valid_until']) && $date > $s['valid_until'])) {
+        if ($date . ' ' . $s['time'] <= $cutoff || (!empty($s['valid_until']) && $date > $s['valid_until'])) {
             continue;
         }
         // Les événements (météo, pilote absent…) retirent des places libres

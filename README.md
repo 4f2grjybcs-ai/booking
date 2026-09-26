@@ -10,6 +10,12 @@ Le dossier `wordpress/flyverbier-reservation/` est une extension WordPress.
 4. Créer une page « Réserver » contenant le shortcode `[reservation_parapente]`.
 5. Vérifier **Réglages → Général → Fuseau horaire** = Zurich.
 
+### Délai minimum de réservation (v1.10)
+
+- **Paramètres → Période de réservation en ligne → Délai minimum avant le vol** (24 h par défaut, 0 = aucun) :
+  les créneaux qui commencent plus tôt ne sont plus proposés en ligne ; le formulaire l'indique au client.
+  L'administrateur peut toujours ajouter une réservation de dernière minute depuis l'agenda.
+
 ### Notifications, e-mails, conditions générales (v1.9)
 
 - **Notifications sur le téléphone des pilotes** (Web Push, gratuit) : bouton 🔔 dans le planning du pilote ;

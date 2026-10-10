@@ -294,7 +294,7 @@
   function activeSlots() { return state.data.slots.filter(function (s) { return s.active; }); }
   // Créneau ajouté (ponctuel ou récurrent) valable ce jour-là ? weekdays : 1 = lundi … 7 = dimanche
   function openingOn(o, date) {
-    if (date < o.from || (o.to && date > o.to)) return false;
+    if (date < o.from || (o.to && date > o.to) || (o.skip || []).indexOf(date) !== -1) return false;
     if (!o.weekdays) return true;
     var dow = toDate(date).getDay() || 7;
     return o.weekdays.split(',').indexOf(String(dow)) !== -1;
@@ -559,8 +559,9 @@
         var pos;
         if (it.kind === 'f') {
           pos = ' style="top:' + top + 'px;height:' + height + 'px;' + (it.side ? 'right:2px;width:34px' : 'left:1px;width:calc(100% - 4px)') + '"';
-          h += '<button type="button" class="g-ghost' + (it.side ? ' side' : '') + (it.added ? ' added' : '') + '" data-free-date="' + d + '" data-free-time="' + it.time + '"' + pos +
-            ' title="' + it.free + ' place' + (it.free > 1 ? 's' : '') + ' libre' + (it.free > 1 ? 's' : '') + ' à ' + it.time + ' – réserver">' +
+          h += '<button type="button" class="g-ghost' + (it.side ? ' side' : '') + (it.added ? ' added' : '') + '" data-free-date="' + d + '" data-free-time="' + it.time + '"' +
+            (it.added ? ' data-added="1"' : '') + pos +
+            ' title="' + it.free + ' place' + (it.free > 1 ? 's' : '') + ' libre' + (it.free > 1 ? 's' : '') + ' à ' + it.time + (it.added ? ' – réserver ou supprimer' : ' – réserver') + '">' +
             '<b>+' + (it.side ? '' : ' ') + it.free + '</b>' + (it.side ? '' : '<span>libre' + (it.free > 1 ? 's' : '') + '</span>') + '</button>';
           return;
         }
@@ -964,14 +965,70 @@
       state.openingsList = data.openings;
       list.innerHTML = data.openings.length ? data.openings.map(function (o, i) {
         var l = openingLabel(o);
-        return '<button type="button" class="g-op-item" data-op="' + i + '">' + icon(o.weekdays ? 'repeat' : 'open') +
-          '<span><b>' + esc(l.title) + '</b><small>' + esc(l.when) + (o.note ? ' · ' + esc(o.note) : '') + '</small></span></button>';
+        return '<div class="g-op-row"><button type="button" class="g-op-item" data-op="' + i + '">' + icon(o.weekdays ? 'repeat' : 'open') +
+          '<span><b>' + esc(l.title) + '</b><small>' + esc(l.when) + (o.note ? ' · ' + esc(o.note) : '') +
+          (o.skip && o.skip.length ? ' · sauf ' + o.skip.map(shortDate).join(', ') : '') + '</small></span></button>' +
+          '<button type="button" class="g-icon-btn g-op-del" data-op-del="' + i + '" aria-label="Supprimer ce créneau">' + icon('trash') + '</button></div>';
       }).join('') : '<p class="g-muted">Aucun créneau ajouté pour le moment.</p>';
     }).catch(function (err) { list.innerHTML = '<p class="g-error">' + esc(err.message) + '</p>'; });
     bg.addEventListener('click', function (e) {
       if (e.target.closest('[data-new-opening]')) { closeSheet(true); return editOpening({ time: '17:00', from: state.anchor >= C.today ? state.anchor : C.today, capacity: 0 }); }
+      var del = e.target.closest('[data-op-del]');
+      if (del) {
+        var o = state.openingsList[+del.getAttribute('data-op-del')];
+        if (!confirm('Supprimer le créneau ' + o.time + (o.weekdays ? ' (toute la série)' : ' du ' + longDate(o.from)) + ' ?\nLes réservations déjà prises restent.')) return;
+        return deleteOpening(o, function () { del.closest('.g-op-row').remove(); });
+      }
       var it = e.target.closest('[data-op]');
       if (it) { closeSheet(true); editOpening(Object.assign({}, state.openingsList[+it.getAttribute('data-op')])); }
+    });
+  }
+
+  function deleteOpening(o, done) {
+    return api('admin/opening/' + o.id, null, { method: 'DELETE' }).then(function () {
+      delete db.openings[o.id]; rebuild(); render();
+      toast('Créneau supprimé');
+      if (done) done();
+    }).catch(function (err) { toast('Suppression impossible : ' + err.message); });
+  }
+
+  // Menu d'un créneau ajouté dans l'agenda : réserver, supprimer ce jour-là, supprimer la série, modifier
+  function openSlotMenu(date, time) {
+    var ops = state.data.openings.filter(function (o) { return o.time === time && openingOn(o, date); });
+    var free = (freeSlots(date).filter(function (x) { return x.time === time; })[0] || {}).free || 0;
+    var h = '<div class="g-sheet-bar"><button type="button" class="g-icon-btn" data-close aria-label="Fermer">' + icon('close') + '</button>' +
+      '<span class="g-sheet-title">' + esc(time) + ' · ' + esc(longDate(date)) + '</span></div><div class="g-sheet-body g-choices">' +
+      '<p class="g-muted g-op-help">' + free + ' place' + (free > 1 ? 's' : '') + ' libre' + (free > 1 ? 's' : '') + ' à la réservation en ligne.</p>' +
+      '<button type="button" data-sm="book">' + icon('people') + '<span><b>Nouvelle réservation</b><small>Réserver à ' + esc(time) + '</small></span></button>';
+    ops.forEach(function (o, i) {
+      var l = openingLabel(o);
+      if (o.weekdays) {
+        h += '<button type="button" data-sm="skip" data-i="' + i + '">' + icon('trash') + '<span><b>Supprimer ce jour-là</b><small>Seulement le ' + esc(longDate(date)) + ' — la série continue (' + esc(l.when) + ')</small></span></button>' +
+          '<button type="button" data-sm="series" data-i="' + i + '" class="g-danger-choice">' + icon('trash') + '<span><b>Supprimer toute la série</b><small>' + esc(l.title) + ' · ' + esc(l.when) + '</small></span></button>';
+      } else {
+        h += '<button type="button" data-sm="series" data-i="' + i + '" class="g-danger-choice">' + icon('trash') + '<span><b>Supprimer ce créneau</b><small>' + esc(l.title) + ' · ' + esc(l.when) + '</small></span></button>';
+      }
+      h += '<button type="button" data-sm="edit" data-i="' + i + '">' + icon(o.weekdays ? 'repeat' : 'open') + '<span><b>Modifier' + (o.weekdays ? ' la série' : '') + '</b><small>Heure, places, jours, dates</small></span></button>';
+    });
+    var bg = openSheet(h + '</div>', 'g-sheet-choice');
+    bg.addEventListener('click', function (e) {
+      var b = e.target.closest('[data-sm]');
+      if (!b) return;
+      var o = ops[+b.getAttribute('data-i')], what = b.getAttribute('data-sm');
+      if (what === 'book') { closeSheet(true); return newBooking(date, time); }
+      if (what === 'edit') { closeSheet(true); return editOpening(Object.assign({}, o)); }
+      if (what === 'series') {
+        if (o.weekdays && !confirm('Supprimer toute la série « ' + openingLabel(o).when + ' » ?\nLes réservations déjà prises restent.')) return;
+        closeSheet(true);
+        return deleteOpening(o);
+      }
+      // Ce jour-là seulement
+      closeSheet(true);
+      o.skip = (o.skip || []).concat([date]);
+      rebuild(); render();
+      api('admin/opening/' + o.id + '/skip', null, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ date: date }) })
+        .then(function () { toast('Créneau de ' + time + ' retiré le ' + longDate(date)); })
+        .catch(function (err) { o.skip = o.skip.filter(function (d) { return d !== date; }); rebuild(); render(); toast('Impossible : ' + err.message); });
     });
   }
 
@@ -1454,7 +1511,11 @@
     if (t.closest('[data-openings]')) return openOpenings();
     if (t.closest('[data-push]')) return openPush();
     if (t.closest('[data-absence]')) return declareAbsence(state.view === 'day' || state.view === 'four' ? state.anchor : C.today);
-    if ((el = t.closest('[data-free-time]'))) return newBooking(el.getAttribute('data-free-date'), el.getAttribute('data-free-time'));
+    if ((el = t.closest('[data-free-time]'))) {
+      // Créneau ajouté (bleu) : menu réserver / supprimer ; créneau habituel : réservation directe
+      if (el.hasAttribute('data-added')) return openSlotMenu(el.getAttribute('data-free-date'), el.getAttribute('data-free-time'));
+      return newBooking(el.getAttribute('data-free-date'), el.getAttribute('data-free-time'));
+    }
     if ((el = t.closest('[data-event]'))) return openEvent(findEvent(+el.getAttribute('data-event')));
     if (t.closest('[data-list-more]')) { state.anchor = addDays(state.anchor, 30); return load(); }
     if ((el = t.closest('[data-goto]'))) {

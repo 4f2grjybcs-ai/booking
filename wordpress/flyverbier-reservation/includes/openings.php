@@ -14,6 +14,8 @@ function fvr_opening_row(array $o): array
         'id' => (int) $o['id'], 'time' => $o['time'], 'capacity' => (int) $o['capacity'],
         'from' => $o['date_from'], 'to' => $o['date_to'] ?: '', 'weekdays' => $o['weekdays'] ?: '',
         'note' => $o['note'] ?? '',
+        // Jours retirés d'une série récurrente (« supprimer ce jour-là »)
+        'skip' => array_values(array_filter(explode(',', (string) ($o['skip_dates'] ?? '')))),
     ];
 }
 
@@ -28,7 +30,7 @@ function fvr_openings_between(string $from, string $to): array
 
 function fvr_opening_matches(array $o, string $date): bool
 {
-    if ($date < $o['from'] || ($o['to'] !== '' && $date > $o['to'])) {
+    if ($date < $o['from'] || ($o['to'] !== '' && $date > $o['to']) || in_array($date, $o['skip'], true)) {
         return false;
     }
     if ($o['weekdays'] === '') {
@@ -121,6 +123,33 @@ add_action('rest_api_init', function () {
             return is_wp_error($saved) ? $saved : ['ok' => true, 'id' => $saved];
         },
     ]);
+    // Retire un seul jour d'un créneau (ponctuel : le supprime ; récurrent : la série continue les autres jours)
+    register_rest_route('fvr/v1', '/admin/opening/(?P<id>\d+)/skip', [
+        'methods'             => 'POST',
+        'permission_callback' => 'fvr_can_edit_calendar',
+        'callback'            => function (WP_REST_Request $req) {
+            global $wpdb;
+            $id = (int) $req['id'];
+            $date = (string) ($req->get_json_params()['date'] ?? '');
+            $row = $wpdb->get_row($wpdb->prepare('SELECT * FROM ' . fvr_table('openings') . ' WHERE id = %d', $id), ARRAY_A);
+            if (!$row || !fvr_valid_date($date)) {
+                return new WP_Error('invalid', 'Créneau introuvable.', ['status' => 404]);
+            }
+            $o = fvr_opening_row($row);
+            if ($o['weekdays'] === '' && $o['to'] === $o['from']) {
+                $wpdb->delete(fvr_table('openings'), ['id' => $id]);
+                return ['ok' => true, 'deleted' => true];
+            }
+            // On ne garde que les jours à venir pour que la liste reste courte
+            $skip = array_values(array_unique(array_filter(array_merge($o['skip'], [$date]), function ($d) {
+                return $d >= fvr_today();
+            })));
+            sort($skip);
+            $wpdb->update(fvr_table('openings'), ['skip_dates' => implode(',', $skip)], ['id' => $id]);
+            return ['ok' => true, 'skip' => $skip];
+        },
+    ]);
+
     register_rest_route('fvr/v1', '/admin/opening/(?P<id>\d+)', [
         'methods'             => 'DELETE',
         'permission_callback' => 'fvr_can_edit_calendar',

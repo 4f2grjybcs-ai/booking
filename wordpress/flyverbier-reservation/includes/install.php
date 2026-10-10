@@ -115,6 +115,7 @@ function fvr_install(): void
   date_to date DEFAULT NULL,
   weekdays varchar(20) NOT NULL DEFAULT '',
   note varchar(190) NOT NULL DEFAULT '',
+  skip_dates varchar(2000) NOT NULL DEFAULT '',
   created_at datetime NOT NULL,
   PRIMARY KEY  (id),
   KEY date_from (date_from)

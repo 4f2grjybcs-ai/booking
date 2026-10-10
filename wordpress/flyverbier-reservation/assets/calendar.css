@@ -504,3 +504,10 @@ body.fvr-cal-page .g-app { height: 100vh; height: 100dvh; }
 .g-days input:focus-visible + span { outline: 2px solid var(--g-blue); outline-offset: 2px; }
 .g-op-info { display: flex; gap: 12px; align-items: flex-start; background: #e8f0fe; color: #174ea6; border-radius: 10px; padding: 10px 12px; font-size: 13px; margin: 10px 0 0; }
 .g-op-info .g-ic { flex: none; }
+
+.g-op-row { display: flex; gap: 6px; align-items: center; }
+.g-op-row .g-op-item { flex: 1; min-width: 0; }
+.fvr-cal .g-op-del, .g-sheet-bg .g-op-del { color: var(--g-red); flex: none; }
+.g-op-del:hover { background: #fce8e6 !important; }
+.g-choices .g-danger-choice .g-ic, .g-choices .g-danger-choice b { color: var(--g-red); }
+.g-choices [data-sm="skip"] .g-ic { color: var(--st-pending); }

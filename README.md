@@ -17,7 +17,9 @@ Le dossier `wordpress/flyverbier-reservation/` est une extension WordPress.
   - **récurrent** : certains jours de la semaine, à partir d'une date, jusqu'à une date (facultative).
 - Les places s'ajoutent aux horaires habituels (additionnées si même heure) et sont réservables en ligne
   (sauf jours fermés, événements et après la fermeture des réservations). Affichées en bleu dans l'agenda.
-- Liste des créneaux ajoutés pour les modifier ou les supprimer (les réservations déjà prises restent).
+- **Suppression** (v1.13) : toucher un créneau bleu dans l'agenda → « Supprimer ce jour-là » (la série continue
+  les autres jours), « Supprimer toute la série » ou « Modifier » ; corbeille sur chaque ligne de la liste
+  « Créneaux disponibles ». Les réservations déjà prises restent.
 
 ### Fermeture des réservations la veille (v1.11)
 

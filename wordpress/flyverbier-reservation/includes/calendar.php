@@ -169,6 +169,7 @@ function fvr_calendar_data(string $from, string $to, bool $canEdit): array
         'bookings' => $bookings,
         'events'   => fvr_events_between($from, $to),
         'openings' => $canEdit ? fvr_openings_between($from, $to) : [],
+        'overrides' => fvr_overrides_between($from, $to),
         'pilots'   => array_map(function ($p) {
             return ['id' => $p['id'], 'name' => $p['name'], 'color' => $p['color'], 'rank' => $p['default_rank'], 'active' => $p['active']];
         }, fvr_pilots()),

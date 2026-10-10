@@ -511,3 +511,29 @@ body.fvr-cal-page .g-app { height: 100vh; height: 100dvh; }
 .g-op-del:hover { background: #fce8e6 !important; }
 .g-choices .g-danger-choice .g-ic, .g-choices .g-danger-choice b { color: var(--g-red); }
 .g-choices [data-sm="skip"] .g-ic { color: var(--st-pending); }
+
+/* ---------- Menu d'un créneau : places, fermeture ---------- */
+.g-ghost.closed { border-color: #bdc1c6; background: repeating-linear-gradient(135deg, #f8f9fa 0 6px, #f1f3f4 6px 12px); color: var(--g-muted); }
+.g-ghost.full { border-color: #ceead6; background: rgba(230,244,234,.35); color: #137333; }
+.g-ghost.full b, .g-ghost.closed b { font-size: 12px; }
+.g-sm-info { margin: 0 0 4px; font-size: 13px; color: var(--g-muted); }
+.g-sm-info b { color: var(--g-text); }
+.g-sm-box { display: flex; align-items: center; gap: 12px; border: 1px solid var(--g-line); border-radius: 12px; padding: 10px 12px; flex-wrap: wrap; }
+.g-sm-box > .g-ic { width: 28px; height: 28px; color: var(--g-blue); flex: none; }
+.g-sm-box > span { display: flex; flex-direction: column; flex: 1 1 140px; min-width: 0; }
+.g-sm-box b { font-size: 15px; font-weight: 500; }
+.g-sm-box small { color: var(--g-muted); font-size: 12px; }
+.g-sm-stepper input { width: 44px !important; text-align: center; border: 0; background: none; font: inherit; font-size: 16px; font-weight: 600; -moz-appearance: textfield; padding: 0; }
+.g-sm-stepper input::-webkit-outer-spin-button, .g-sm-stepper input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+.g-sm-save { padding: 8px 16px !important; }
+.g-choices [data-sm="close"] .g-ic { color: var(--st-pending); }
+.g-choices [data-sm="reset"] .g-ic { color: var(--st-confirmed); }
+.g-choices .g-sm-box { flex-wrap: nowrap; }
+.g-choices .g-sm-box button.g-sm-save { background: var(--g-blue); color: #fff; border: 0; border-radius: 20px; padding: 9px 16px; font-weight: 600; flex: none; }
+.g-choices .g-sm-box button.g-sm-save:hover { background: #1557b0; }
+.g-choices .g-sm-stepper button { padding: 0; justify-content: center; }
+@media (max-width: 480px) {
+  .g-choices .g-sm-box { flex-wrap: wrap; }
+  .g-choices .g-sm-box > span { flex-basis: calc(100% - 40px); }
+  .g-choices .g-sm-stepper { margin-left: 40px; }
+}

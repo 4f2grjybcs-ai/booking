@@ -121,6 +121,14 @@ function fvr_install(): void
   KEY date_from (date_from)
 ) $charset;");
 
+    // Nombre de places modifié pour un seul jour (0 = créneau fermé ce jour-là)
+    dbDelta("CREATE TABLE " . fvr_table('overrides') . " (
+  date date NOT NULL,
+  time char(5) NOT NULL,
+  capacity int(11) NOT NULL DEFAULT 0,
+  PRIMARY KEY  (date,time)
+) $charset;");
+
     // Appareils des pilotes abonnés aux notifications
     dbDelta("CREATE TABLE " . fvr_table('push') . " (
   id bigint(20) unsigned NOT NULL AUTO_INCREMENT,

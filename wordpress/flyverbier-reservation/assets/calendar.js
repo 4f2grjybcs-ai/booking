@@ -163,7 +163,7 @@
   }
 
   // ---------- Données : cache par jour, affichage immédiat, mise à jour en arrière-plan ----------
-  var db = { days: {}, bookings: {}, events: {}, blocked: {}, openings: {}, slots: [], pilots: [], flights: [] };
+  var db = { days: {}, bookings: {}, events: {}, blocked: {}, openings: {}, overrides: {}, slots: [], pilots: [], flights: [] };
   var inflight = {};
   var loadingCount = 0;
 
@@ -172,7 +172,7 @@
     state.data = {
       bookings: values(db.bookings), events: values(db.events),
       blocked: Object.keys(db.blocked).map(function (d) { return { date: d, reason: db.blocked[d] }; }),
-      openings: values(db.openings), slots: db.slots, pilots: db.pilots, flights: db.flights
+      openings: values(db.openings), overrides: values(db.overrides), slots: db.slots, pilots: db.pilots, flights: db.flights
     };
   }
   function merge(data) {
@@ -184,6 +184,8 @@
     (data.events || []).forEach(function (e) { db.events[e.id] = e; });
     data.blocked.forEach(function (x) { db.blocked[x.date] = x.reason || 'Fermé'; });
     (data.openings || []).forEach(function (o) { db.openings[o.id] = o; });
+    Object.keys(db.overrides).forEach(function (k) { if (db.overrides[k].date >= data.from && db.overrides[k].date <= data.to) delete db.overrides[k]; });
+    (data.overrides || []).forEach(function (o) { db.overrides[o.date + '|' + o.time] = o; });
     db.slots = data.slots;
     db.pilots = data.pilots || [];
     if (data.flights) db.flights = data.flights;
@@ -309,6 +311,13 @@
       if (!openingOn(o, date)) return;
       if (map[o.time]) { map[o.time].capacity += o.capacity; map[o.time].extra = true; }
       else map[o.time] = { time: o.time, capacity: o.capacity, added: true };
+    });
+    // Places modifiées pour ce jour uniquement (0 = fermé)
+    (ds.overrides || []).forEach(function (ov) {
+      if (ov.date !== date || !map[ov.time]) return;
+      map[ov.time].base = map[ov.time].capacity;
+      map[ov.time].capacity = ov.capacity;
+      map[ov.time].override = true;
     });
     return Object.keys(map).sort().map(function (k) { return map[k]; });
   }
@@ -535,8 +544,13 @@
       slotsFor(state.data, d).forEach(function (s) {
         var st = slotFree(state.data, d, s.time, s.capacity);
         // Places libres (administrateur) : bloc cliquable pour réserver
-        if (C.canEdit && st.free > 0 && !blocked[d] && isFuture(d, s.time) && slotOpen(s, d)) {
+        var manage = C.canEdit && !blocked[d] && isFuture(d, s.time) && slotOpen(s, d);
+        if (manage && st.free > 0) {
           items.push({ kind: 'f', time: s.time, free: st.free, added: s.added || s.extra, s: mins(s.time), e: mins(s.time) + DURATION, order: 2 });
+        } else if (manage && s.capacity === 0 && s.override) {
+          items.push({ kind: 'f', time: s.time, free: 0, closed: true, s: mins(s.time), e: mins(s.time) + DURATION, order: 2 });
+        } else if (manage && st.blocked !== Infinity && st.taken > 0) {
+          items.push({ kind: 'f', time: s.time, free: 0, full: true, s: mins(s.time), e: mins(s.time) + DURATION, order: 2 });
         }
         if (C.canEdit && st.blocked !== Infinity && st.taken > s.capacity) {
           h += '<div class="g-slot over" style="top:' + ((mins(s.time) / 60 - hr[0]) * H) + 'px;height:' + (DURATION / 60 * H) + 'px"><span>' + st.taken + '/' + s.capacity + '</span></div>';
@@ -559,10 +573,13 @@
         var pos;
         if (it.kind === 'f') {
           pos = ' style="top:' + top + 'px;height:' + height + 'px;' + (it.side ? 'right:2px;width:34px' : 'left:1px;width:calc(100% - 4px)') + '"';
-          h += '<button type="button" class="g-ghost' + (it.side ? ' side' : '') + (it.added ? ' added' : '') + '" data-free-date="' + d + '" data-free-time="' + it.time + '"' +
-            (it.added ? ' data-added="1"' : '') + pos +
-            ' title="' + it.free + ' place' + (it.free > 1 ? 's' : '') + ' libre' + (it.free > 1 ? 's' : '') + ' à ' + it.time + (it.added ? ' – réserver ou supprimer' : ' – réserver') + '">' +
-            '<b>+' + (it.side ? '' : ' ') + it.free + '</b>' + (it.side ? '' : '<span>libre' + (it.free > 1 ? 's' : '') + '</span>') + '</button>';
+          var label = it.closed ? '<b>' + (it.side ? '×' : 'Fermé') + '</b>' + (it.side ? '' : '<span>ce jour-là</span>')
+            : it.full ? '<b>' + (it.side ? '✓' : 'Complet') + '</b>'
+            : '<b>+' + (it.side ? '' : ' ') + it.free + '</b>' + (it.side ? '' : '<span>libre' + (it.free > 1 ? 's' : '') + '</span>');
+          h += '<button type="button" class="g-ghost' + (it.side ? ' side' : '') + (it.added ? ' added' : '') + (it.closed ? ' closed' : '') + (it.full ? ' full' : '') +
+            '" data-free-date="' + d + '" data-free-time="' + it.time + '"' + pos +
+            ' title="' + (it.closed ? 'Créneau fermé ce jour-là' : it.full ? 'Complet' : it.free + ' place' + (it.free > 1 ? 's' : '') + ' libre' + (it.free > 1 ? 's' : '')) +
+            ' à ' + it.time + ' – réserver, modifier les places, fermer…">' + label + '</button>';
           return;
         }
         var R = !it.reserve ? '0px' : state.view === 'four' ? (mq.matches ? '30px' : '48px') : '38px', w = 1 / it.n;
@@ -851,7 +868,7 @@
         var pax = parseInt(form.passengers.value, 10) || 1;
         var closed = (data.blocked.length ? '<div class="g-warn">Jour fermé : ' + esc(data.blocked[0].reason || 'fermé') + '</div>' : '') +
           (data.events || []).map(function (ev) { return '<div class="g-warn">⛔ ' + esc(ev.title) + ' · ' + esc(eventTime(ev)) + ' · ' + blocksLabel(ev) + '</div>'; }).join('');
-        var chips = slotsFor(data, date).map(function (s) {
+        var chips = slotsFor(data, date).filter(function (s) { return s.capacity > 0; }).map(function (s) {
           var st = slotFree(data, date, s.time, s.capacity, b.id);
           var free = st.free;
           var cls = free < pax ? ' full' : '';
@@ -992,37 +1009,89 @@
     }).catch(function (err) { toast('Suppression impossible : ' + err.message); });
   }
 
-  // Menu d'un créneau ajouté dans l'agenda : réserver, supprimer ce jour-là, supprimer la série, modifier
+  // Menu d'un créneau dans l'agenda : réserver, places ce jour-là / tous les jours, fermer, supprimer, série…
+  function stepperHtml(name, value) {
+    return '<div class="g-stepper g-sm-stepper"><button type="button" data-st="' + name + '" data-d="-1" aria-label="Moins">−</button>' +
+      '<input type="number" min="0" max="50" name="' + name + '" value="' + value + '" inputmode="numeric">' +
+      '<button type="button" data-st="' + name + '" data-d="1" aria-label="Plus">+</button></div>';
+  }
+
   function openSlotMenu(date, time) {
     var ops = state.data.openings.filter(function (o) { return o.time === time && openingOn(o, date); });
-    var free = (freeSlots(date).filter(function (x) { return x.time === time; })[0] || {}).free || 0;
+    var slot = slotsFor(state.data, date).filter(function (x) { return x.time === time; })[0] || { capacity: 0 };
+    var base = activeSlots().filter(function (x) { return x.time === time && (!x.until || date <= x.until); })[0];
+    var st = slotFree(state.data, date, time, slot.capacity);
+    var normal = slot.override ? slot.base : slot.capacity;
+    var info = slot.capacity === 0 && slot.override ? '<b>Fermé ce jour-là</b> (habituellement ' + normal + ' places)'
+      : '<b>' + st.free + ' libre' + (st.free > 1 ? 's' : '') + '</b> · ' + st.taken + ' réservée' + (st.taken > 1 ? 's' : '') + ' · ' + slot.capacity + ' place' + (slot.capacity > 1 ? 's' : '') +
+        (slot.override ? ' (habituellement ' + normal + ')' : '') + (st.blocked && st.blocked !== Infinity ? ' · ' + st.blocked + ' bloquée' + (st.blocked > 1 ? 's' : '') + ' par un événement' : '');
     var h = '<div class="g-sheet-bar"><button type="button" class="g-icon-btn" data-close aria-label="Fermer">' + icon('close') + '</button>' +
-      '<span class="g-sheet-title">' + esc(time) + ' · ' + esc(longDate(date)) + '</span></div><div class="g-sheet-body g-choices">' +
-      '<p class="g-muted g-op-help">' + free + ' place' + (free > 1 ? 's' : '') + ' libre' + (free > 1 ? 's' : '') + ' à la réservation en ligne.</p>' +
-      '<button type="button" data-sm="book">' + icon('people') + '<span><b>Nouvelle réservation</b><small>Réserver à ' + esc(time) + '</small></span></button>';
+      '<span class="g-sheet-title">' + esc(time) + ' · ' + esc(longDate(date)) + '</span></div><div class="g-sheet-body g-choices g-slotmenu">' +
+      '<p class="g-sm-info">' + info + '</p>' +
+      '<button type="button" data-sm="book">' + icon('people') + '<span><b>Nouvelle réservation</b><small>Réserver à ' + esc(time) + '</small></span></button>' +
+      '<div class="g-sm-box">' + icon('open') + '<span><b>Places ce jour-là</b><small>Uniquement le ' + esc(longDate(date)) + '</small></span>' +
+        stepperHtml('day', slot.capacity) + '<button type="button" class="g-save g-sm-save" data-sm="day">OK</button></div>' +
+      (slot.override ? '<button type="button" data-sm="reset">' + icon('repeat') + '<span><b>' + (slot.capacity === 0 ? 'Rouvrir ce créneau' : 'Rétablir les places habituelles') + '</b><small>' + normal + ' place' + (normal > 1 ? 's' : '') + ' ce jour-là</small></span></button>' : '') +
+      (slot.capacity > 0 ? '<button type="button" data-sm="close">' + icon('block') + '<span><b>Fermer ce créneau ce jour-là</b><small>Plus réservable en ligne le ' + esc(longDate(date)) + ' — les réservations prises restent</small></span></button>' : '');
+    if (base) {
+      h += '<div class="g-sm-box">' + icon('repeat') + '<span><b>Places tous les jours</b><small>Créneau habituel de ' + esc(time) + '</small></span>' +
+        stepperHtml('base', base.capacity) + '<button type="button" class="g-save g-sm-save" data-sm="base">OK</button></div>' +
+        '<button type="button" data-sm="delbase" class="g-danger-choice">' + icon('trash') + '<span><b>Supprimer ce créneau habituel</b><small>Tous les jours (réactivable dans Paramètres → Créneaux horaires)</small></span></button>';
+    }
     ops.forEach(function (o, i) {
       var l = openingLabel(o);
       if (o.weekdays) {
-        h += '<button type="button" data-sm="skip" data-i="' + i + '">' + icon('trash') + '<span><b>Supprimer ce jour-là</b><small>Seulement le ' + esc(longDate(date)) + ' — la série continue (' + esc(l.when) + ')</small></span></button>' +
+        h += '<button type="button" data-sm="skip" data-i="' + i + '">' + icon('trash') + '<span><b>Retirer le créneau ajouté ce jour-là</b><small>' + esc(l.title) + ' — la série continue (' + esc(l.when) + ')</small></span></button>' +
           '<button type="button" data-sm="series" data-i="' + i + '" class="g-danger-choice">' + icon('trash') + '<span><b>Supprimer toute la série</b><small>' + esc(l.title) + ' · ' + esc(l.when) + '</small></span></button>';
       } else {
-        h += '<button type="button" data-sm="series" data-i="' + i + '" class="g-danger-choice">' + icon('trash') + '<span><b>Supprimer ce créneau</b><small>' + esc(l.title) + ' · ' + esc(l.when) + '</small></span></button>';
+        h += '<button type="button" data-sm="series" data-i="' + i + '" class="g-danger-choice">' + icon('trash') + '<span><b>Supprimer le créneau ajouté</b><small>' + esc(l.title) + ' · ' + esc(l.when) + '</small></span></button>';
       }
-      h += '<button type="button" data-sm="edit" data-i="' + i + '">' + icon(o.weekdays ? 'repeat' : 'open') + '<span><b>Modifier' + (o.weekdays ? ' la série' : '') + '</b><small>Heure, places, jours, dates</small></span></button>';
+      h += '<button type="button" data-sm="edit" data-i="' + i + '">' + icon(o.weekdays ? 'repeat' : 'open') + '<span><b>Modifier' + (o.weekdays ? ' la série' : ' le créneau ajouté') + '</b><small>Heure, places, jours, dates</small></span></button>';
     });
     var bg = openSheet(h + '</div>', 'g-sheet-choice');
+
+    function post(path, body, msg) {
+      closeSheet(true);
+      return api(path, null, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }).then(function () {
+        toast(msg);
+        var r = neededRange();
+        return fetchRange(r[0], r[1], true).then(render);
+      }).catch(function (err) { toast('Impossible : ' + err.message); });
+    }
     bg.addEventListener('click', function (e) {
+      var stb = e.target.closest('[data-st]');
+      if (stb) {
+        var inp = bg.querySelector('input[name=' + stb.getAttribute('data-st') + ']');
+        inp.value = Math.max(0, Math.min(50, (parseInt(inp.value, 10) || 0) + (+stb.getAttribute('data-d'))));
+        return;
+      }
       var b = e.target.closest('[data-sm]');
       if (!b) return;
       var o = ops[+b.getAttribute('data-i')], what = b.getAttribute('data-sm');
       if (what === 'book') { closeSheet(true); return newBooking(date, time); }
       if (what === 'edit') { closeSheet(true); return editOpening(Object.assign({}, o)); }
+      if (what === 'day') {
+        var n = parseInt(bg.querySelector('input[name=day]').value, 10) || 0;
+        if (n === normal && slot.override) return post('admin/slot-day', { date: date, time: time, capacity: null }, 'Places habituelles rétablies');
+        if (n < st.taken && !confirm(st.taken + ' places sont déjà réservées : le créneau sera en surréservation. Continuer ?')) return;
+        return post('admin/slot-day', { date: date, time: time, capacity: n }, n === 0 ? 'Créneau fermé le ' + longDate(date) : time + ' : ' + n + ' place' + (n > 1 ? 's' : '') + ' le ' + longDate(date));
+      }
+      if (what === 'reset') return post('admin/slot-day', { date: date, time: time, capacity: null }, 'Places habituelles rétablies');
+      if (what === 'close') return post('admin/slot-day', { date: date, time: time, capacity: 0 }, 'Créneau de ' + time + ' fermé le ' + longDate(date));
+      if (what === 'base') {
+        var nb = parseInt(bg.querySelector('input[name=base]').value, 10) || 0;
+        return post('admin/slot-base', { time: time, capacity: nb }, 'Créneau de ' + time + ' : ' + nb + ' place' + (nb > 1 ? 's' : '') + ' tous les jours');
+      }
+      if (what === 'delbase') {
+        if (!confirm('Supprimer le créneau habituel de ' + time + ' pour TOUS les jours ?\nLes réservations déjà prises restent. Réactivable dans Paramètres.')) return;
+        return post('admin/slot-base', { time: time, active: 0 }, 'Créneau habituel de ' + time + ' supprimé');
+      }
       if (what === 'series') {
         if (o.weekdays && !confirm('Supprimer toute la série « ' + openingLabel(o).when + ' » ?\nLes réservations déjà prises restent.')) return;
         closeSheet(true);
         return deleteOpening(o);
       }
-      // Ce jour-là seulement
+      // Créneau ajouté récurrent : ce jour-là seulement
       closeSheet(true);
       o.skip = (o.skip || []).concat([date]);
       rebuild(); render();
@@ -1512,9 +1581,8 @@
     if (t.closest('[data-push]')) return openPush();
     if (t.closest('[data-absence]')) return declareAbsence(state.view === 'day' || state.view === 'four' ? state.anchor : C.today);
     if ((el = t.closest('[data-free-time]'))) {
-      // Créneau ajouté (bleu) : menu réserver / supprimer ; créneau habituel : réservation directe
-      if (el.hasAttribute('data-added')) return openSlotMenu(el.getAttribute('data-free-date'), el.getAttribute('data-free-time'));
-      return newBooking(el.getAttribute('data-free-date'), el.getAttribute('data-free-time'));
+      // Tout créneau (vert, bleu, complet, fermé) : menu réserver / places / fermer / supprimer
+      return openSlotMenu(el.getAttribute('data-free-date'), el.getAttribute('data-free-time'));
     }
     if ((el = t.closest('[data-event]'))) return openEvent(findEvent(+el.getAttribute('data-event')));
     if (t.closest('[data-list-more]')) { state.anchor = addDays(state.anchor, 30); return load(); }

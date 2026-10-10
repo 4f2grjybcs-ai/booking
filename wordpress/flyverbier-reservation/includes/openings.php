@@ -57,8 +57,27 @@ function fvr_slots_for_date(string $date): array
             $out[$o['time']] = ($out[$o['time']] ?? 0) + $o['capacity'];
         }
     }
+    // Places modifiées pour ce jour uniquement (0 = fermé)
+    foreach (fvr_overrides_between($date, $date) as $ov) {
+        if (isset($out[$ov['time']])) {
+            $out[$ov['time']] = $ov['capacity'];
+            if ($ov['capacity'] <= 0) {
+                unset($out[$ov['time']]);
+            }
+        }
+    }
     ksort($out);
     return $out;
+}
+
+function fvr_overrides_between(string $from, string $to): array
+{
+    global $wpdb;
+    $rows = $wpdb->get_results($wpdb->prepare('SELECT date, time, capacity FROM ' . fvr_table('overrides')
+        . ' WHERE date BETWEEN %s AND %s', $from, $to), ARRAY_A);
+    return array_map(function ($r) {
+        return ['date' => $r['date'], 'time' => $r['time'], 'capacity' => (int) $r['capacity']];
+    }, $rows ?: []);
 }
 
 function fvr_save_opening(array $p, int $id = 0)
@@ -123,6 +142,49 @@ add_action('rest_api_init', function () {
             return is_wp_error($saved) ? $saved : ['ok' => true, 'id' => $saved];
         },
     ]);
+    // Places d'un créneau pour un seul jour : capacity = nombre (0 = fermé), null = rétablir les places habituelles
+    register_rest_route('fvr/v1', '/admin/slot-day', [
+        'methods'             => 'POST',
+        'permission_callback' => 'fvr_can_edit_calendar',
+        'callback'            => function (WP_REST_Request $req) {
+            global $wpdb;
+            $p = (array) $req->get_json_params();
+            $date = (string) ($p['date'] ?? '');
+            $time = (string) ($p['time'] ?? '');
+            if (!fvr_valid_date($date) || !preg_match('/^\d{2}:\d{2}$/', $time)) {
+                return new WP_Error('invalid', 'Créneau invalide.', ['status' => 422]);
+            }
+            $wpdb->delete(fvr_table('overrides'), ['date' => $date, 'time' => $time]);
+            if (isset($p['capacity']) && $p['capacity'] !== null && $p['capacity'] !== '') {
+                $wpdb->insert(fvr_table('overrides'), ['date' => $date, 'time' => $time, 'capacity' => max(0, min(50, (int) $p['capacity']))]);
+            }
+            return ['ok' => true];
+        },
+    ]);
+
+    // Créneau habituel (tous les jours) : nombre de places ou suppression (désactivation)
+    register_rest_route('fvr/v1', '/admin/slot-base', [
+        'methods'             => 'POST',
+        'permission_callback' => 'fvr_can_edit_calendar',
+        'callback'            => function (WP_REST_Request $req) {
+            global $wpdb;
+            $p = (array) $req->get_json_params();
+            $time = (string) ($p['time'] ?? '');
+            $data = [];
+            if (isset($p['capacity'])) {
+                $data['capacity'] = max(0, min(50, (int) $p['capacity']));
+            }
+            if (isset($p['active'])) {
+                $data['active'] = $p['active'] ? 1 : 0;
+            }
+            if (!preg_match('/^\d{2}:\d{2}$/', $time) || !$data
+                || !$wpdb->update(fvr_table('slots'), $data, ['time' => $time]) && $wpdb->last_error) {
+                return new WP_Error('invalid', 'Créneau habituel introuvable.', ['status' => 422]);
+            }
+            return ['ok' => true];
+        },
+    ]);
+
     // Retire un seul jour d'un créneau (ponctuel : le supprime ; récurrent : la série continue les autres jours)
     register_rest_route('fvr/v1', '/admin/opening/(?P<id>\d+)/skip', [
         'methods'             => 'POST',

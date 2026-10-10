@@ -106,6 +106,20 @@ function fvr_install(): void
   KEY pilot_id (pilot_id)
 ) $charset;");
 
+    // Créneaux ajoutés depuis l'agenda (ponctuels ou récurrents)
+    dbDelta("CREATE TABLE " . fvr_table('openings') . " (
+  id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+  time char(5) NOT NULL,
+  capacity int(11) NOT NULL DEFAULT 1,
+  date_from date NOT NULL,
+  date_to date DEFAULT NULL,
+  weekdays varchar(20) NOT NULL DEFAULT '',
+  note varchar(190) NOT NULL DEFAULT '',
+  created_at datetime NOT NULL,
+  PRIMARY KEY  (id),
+  KEY date_from (date_from)
+) $charset;");
+
     // Appareils des pilotes abonnés aux notifications
     dbDelta("CREATE TABLE " . fvr_table('push') . " (
   id bigint(20) unsigned NOT NULL AUTO_INCREMENT,

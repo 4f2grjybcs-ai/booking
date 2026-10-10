@@ -10,6 +10,15 @@ Le dossier `wordpress/flyverbier-reservation/` est une extension WordPress.
 4. Créer une page « Réserver » contenant le shortcode `[reservation_parapente]`.
 5. Vérifier **Réglages → Général → Fuseau horaire** = Zurich.
 
+### Créneaux disponibles ajoutés depuis l'agenda (v1.12)
+
+- **Créer → Créneau disponible** (ou clic dans une case vide, ou « Créneaux disponibles » dans la colonne de gauche) :
+  - **ponctuel** : une date, une heure (au quart d'heure), un nombre de places ;
+  - **récurrent** : certains jours de la semaine, à partir d'une date, jusqu'à une date (facultative).
+- Les places s'ajoutent aux horaires habituels (additionnées si même heure) et sont réservables en ligne
+  (sauf jours fermés, événements et après la fermeture des réservations). Affichées en bleu dans l'agenda.
+- Liste des créneaux ajoutés pour les modifier ou les supprimer (les réservations déjà prises restent).
+
 ### Fermeture des réservations la veille (v1.11)
 
 - **Paramètres → Période de réservation en ligne → Fermeture des réservations en ligne** :

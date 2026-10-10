@@ -168,6 +168,7 @@ function fvr_calendar_data(string $from, string $to, bool $canEdit): array
             'SELECT date, reason FROM ' . fvr_table('blocked') . ' WHERE date BETWEEN %s AND %s', $from, $to), ARRAY_A),
         'bookings' => $bookings,
         'events'   => fvr_events_between($from, $to),
+        'openings' => $canEdit ? fvr_openings_between($from, $to) : [],
         'pilots'   => array_map(function ($p) {
             return ['id' => $p['id'], 'name' => $p['name'], 'color' => $p['color'], 'rank' => $p['default_rank'], 'active' => $p['active']];
         }, fvr_pilots()),

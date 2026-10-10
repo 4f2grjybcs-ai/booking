@@ -35,6 +35,8 @@
     more: '<circle cx="12" cy="5.5" r="1.3"/><circle cx="12" cy="12" r="1.3"/><circle cx="12" cy="18.5" r="1.3"/>',
     pilot: '<circle cx="12" cy="7.5" r="3.5"/><path d="M5 20c.8-4 3.6-6 7-6s6.2 2 7 6"/>',
     block: '<circle cx="12" cy="12" r="8.5"/><path d="M6 6l12 12"/>',
+    open: '<rect x="3.5" y="5" width="17" height="15" rx="2"/><path d="M3.5 10h17M8 3v4M16 3v4M12 12.5v5M9.5 15h5"/>',
+    repeat: '<path d="M4 12a8 8 0 0 1 13.7-5.6L20 9M20 4v5h-5M20 12a8 8 0 0 1-13.7 5.6L4 15M4 20v-5h5"/>',
     bell: '<path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15z"/><path d="M10 20a2 2 0 0 0 4 0"/>',
     belloff: '<path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15z"/><path d="M10 20a2 2 0 0 0 4 0"/><path d="M4 4l16 16"/>',
     cal: '<rect x="3.5" y="5" width="17" height="15" rx="2"/><path d="M3.5 10h17M8 3v4M16 3v4"/>',
@@ -161,7 +163,7 @@
   }
 
   // ---------- Données : cache par jour, affichage immédiat, mise à jour en arrière-plan ----------
-  var db = { days: {}, bookings: {}, events: {}, blocked: {}, slots: [], pilots: [], flights: [] };
+  var db = { days: {}, bookings: {}, events: {}, blocked: {}, openings: {}, slots: [], pilots: [], flights: [] };
   var inflight = {};
   var loadingCount = 0;
 
@@ -170,7 +172,7 @@
     state.data = {
       bookings: values(db.bookings), events: values(db.events),
       blocked: Object.keys(db.blocked).map(function (d) { return { date: d, reason: db.blocked[d] }; }),
-      slots: db.slots, pilots: db.pilots, flights: db.flights
+      openings: values(db.openings), slots: db.slots, pilots: db.pilots, flights: db.flights
     };
   }
   function merge(data) {
@@ -181,6 +183,7 @@
     data.bookings.forEach(function (b) { db.bookings[b.id] = b; });
     (data.events || []).forEach(function (e) { db.events[e.id] = e; });
     data.blocked.forEach(function (x) { db.blocked[x.date] = x.reason || 'Fermé'; });
+    (data.openings || []).forEach(function (o) { db.openings[o.id] = o; });
     db.slots = data.slots;
     db.pilots = data.pilots || [];
     if (data.flights) db.flights = data.flights;
@@ -289,6 +292,26 @@
     return m;
   }
   function activeSlots() { return state.data.slots.filter(function (s) { return s.active; }); }
+  // Créneau ajouté (ponctuel ou récurrent) valable ce jour-là ? weekdays : 1 = lundi … 7 = dimanche
+  function openingOn(o, date) {
+    if (date < o.from || (o.to && date > o.to)) return false;
+    if (!o.weekdays) return true;
+    var dow = toDate(date).getDay() || 7;
+    return o.weekdays.split(',').indexOf(String(dow)) !== -1;
+  }
+  // Horaires réservables d'un jour : habituels + créneaux ajoutés (places additionnées à la même heure)
+  function slotsFor(ds, date) {
+    var map = {};
+    (ds.slots || []).forEach(function (s) {
+      if (s.active && (!s.until || date <= s.until)) map[s.time] = { time: s.time, capacity: s.capacity, added: false };
+    });
+    (ds.openings || []).forEach(function (o) {
+      if (!openingOn(o, date)) return;
+      if (map[o.time]) { map[o.time].capacity += o.capacity; map[o.time].extra = true; }
+      else map[o.time] = { time: o.time, capacity: o.capacity, added: true };
+    });
+    return Object.keys(map).sort().map(function (k) { return map[k]; });
+  }
   function paxAt(list, time) {
     return (list || []).reduce(function (n, b) { return n + (b.time === time && b.status !== 'cancelled' ? b.passengers : 0); }, 0);
   }
@@ -296,7 +319,8 @@
 
   // Plage horaire affichée : autour des créneaux et des réservations
   function hourRange() {
-    var ms = activeSlots().map(function (s) { return mins(s.time); });
+    var ms = activeSlots().map(function (s) { return mins(s.time); })
+      .concat((state.data.openings || []).map(function (o) { return mins(o.time); }));
     visible().forEach(function (b) { ms.push(mins(b.time)); });
     var lo = Math.min.apply(null, ms.concat([8 * 60])), hi = Math.max.apply(null, ms.map(function (m) { return m + DURATION; }).concat([18 * 60]));
     return [Math.max(0, Math.floor(lo / 60)), Math.min(24, Math.ceil(hi / 60))];
@@ -374,6 +398,7 @@
   function sidebar() {
     return '<aside class="g-side">' +
       (C.canEdit ? '<button type="button" class="g-create" data-create>' + icon('plus') + '<span>Créer</span></button>' : '') +
+      (C.canEdit ? '<button type="button" class="g-side-btn" data-openings>' + icon('open') + '<span>Créneaux disponibles</span></button>' : '') +
       (isPilot ? '<button type="button" class="g-create" data-absence>' + icon('block') + '<span>Déclarer une absence</span></button>' : '') +
       miniMonth() +
       '<div class="g-legend"><h3>Statuts</h3>' + Object.keys(C.statuses).map(function (k) {
@@ -447,7 +472,7 @@
   // Créneaux encore réservables d'un jour : [{time, free}]
   function freeSlots(date) {
     if (blockedMap()[date]) return [];
-    return activeSlots().filter(function (s) { return isFuture(date, s.time) && slotOpen(s, date); }).map(function (s) {
+    return slotsFor(state.data, date).filter(function (s) { return isFuture(date, s.time) && slotOpen(s, date); }).map(function (s) {
       return { time: s.time, free: slotFree(state.data, date, s.time, s.capacity).free };
     }).filter(function (x) { return x.free > 0; });
   }
@@ -507,11 +532,11 @@
       eventsOn(state.data, d).filter(function (e) { return !e.all_day; }).forEach(function (e) {
         items.push({ kind: 'e', ev: e, s: mins(e.start), e: Math.max(mins(e.end), mins(e.start) + 15), order: 0 });
       });
-      slots.forEach(function (s) {
+      slotsFor(state.data, d).forEach(function (s) {
         var st = slotFree(state.data, d, s.time, s.capacity);
         // Places libres (administrateur) : bloc cliquable pour réserver
         if (C.canEdit && st.free > 0 && !blocked[d] && isFuture(d, s.time) && slotOpen(s, d)) {
-          items.push({ kind: 'f', time: s.time, free: st.free, s: mins(s.time), e: mins(s.time) + DURATION, order: 2 });
+          items.push({ kind: 'f', time: s.time, free: st.free, added: s.added || s.extra, s: mins(s.time), e: mins(s.time) + DURATION, order: 2 });
         }
         if (C.canEdit && st.blocked !== Infinity && st.taken > s.capacity) {
           h += '<div class="g-slot over" style="top:' + ((mins(s.time) / 60 - hr[0]) * H) + 'px;height:' + (DURATION / 60 * H) + 'px"><span>' + st.taken + '/' + s.capacity + '</span></div>';
@@ -534,7 +559,7 @@
         var pos;
         if (it.kind === 'f') {
           pos = ' style="top:' + top + 'px;height:' + height + 'px;' + (it.side ? 'right:2px;width:34px' : 'left:1px;width:calc(100% - 4px)') + '"';
-          h += '<button type="button" class="g-ghost' + (it.side ? ' side' : '') + '" data-free-date="' + d + '" data-free-time="' + it.time + '"' + pos +
+          h += '<button type="button" class="g-ghost' + (it.side ? ' side' : '') + (it.added ? ' added' : '') + '" data-free-date="' + d + '" data-free-time="' + it.time + '"' + pos +
             ' title="' + it.free + ' place' + (it.free > 1 ? 's' : '') + ' libre' + (it.free > 1 ? 's' : '') + ' à ' + it.time + ' – réserver">' +
             '<b>+' + (it.side ? '' : ' ') + it.free + '</b>' + (it.side ? '' : '<span>libre' + (it.free > 1 ? 's' : '') + '</span>') + '</button>';
           return;
@@ -825,7 +850,7 @@
         var pax = parseInt(form.passengers.value, 10) || 1;
         var closed = (data.blocked.length ? '<div class="g-warn">Jour fermé : ' + esc(data.blocked[0].reason || 'fermé') + '</div>' : '') +
           (data.events || []).map(function (ev) { return '<div class="g-warn">⛔ ' + esc(ev.title) + ' · ' + esc(eventTime(ev)) + ' · ' + blocksLabel(ev) + '</div>'; }).join('');
-        var chips = data.slots.filter(function (s) { return s.active && (!s.until || date <= s.until); }).map(function (s) {
+        var chips = slotsFor(data, date).map(function (s) {
           var st = slotFree(data, date, s.time, s.capacity, b.id);
           var free = st.free;
           var cls = free < pax ? ' full' : '';
@@ -910,18 +935,139 @@
     editBooking({ date: date || (state.view === 'day' ? state.anchor : C.today), time: time || (s ? s.time : '10:00'), status: 'confirmed', passengers: 1 });
   }
 
-  // ---------- Événements : détail, création, modification ----------
-  function openCreate(date, time) {
+  // ---------- Créneaux disponibles ajoutés (ponctuels / récurrents) ----------
+  var WD = ['', 'Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'];
+  function openingLabel(o) {
+    var when = o.weekdays
+      ? 'Chaque ' + o.weekdays.split(',').map(function (d) { return WD[+d].toLowerCase() + '.'; }).join(', ') +
+        ' · dès le ' + shortDate(o.from) + (o.to ? ' jusqu\'au ' + shortDate(o.to) : ' (sans fin)')
+      : longDate(o.from);
+    return { title: o.time + ' · ' + o.capacity + ' place' + (o.capacity > 1 ? 's' : ''), when: when };
+  }
+  var MONTHS_SHORT = ['janv.', 'févr.', 'mars', 'avr.', 'mai', 'juin', 'juil.', 'août', 'sept.', 'oct.', 'nov.', 'déc.'];
+  function shortDate(s) { var d = toDate(s); return d.getDate() + ' ' + MONTHS_SHORT[d.getMonth()]; }
+  function timeOptionsRange(fromH, toH, current) {
+    var list = [];
+    for (var m = fromH * 60; m <= toH * 60; m += 15) list.push(hhmm(m));
+    if (current && list.indexOf(current) === -1) { list.push(current); list.sort(); }
+    return list.map(function (t) { return '<option' + (t === current ? ' selected' : '') + '>' + t + '</option>'; }).join('');
+  }
+
+  function openOpenings() {
     var bg = openSheet('<div class="g-sheet-bar"><button type="button" class="g-icon-btn" data-close aria-label="Fermer">' + icon('close') + '</button>' +
-      '<span class="g-sheet-title">Créer</span></div><div class="g-sheet-body g-choices">' +
+      '<span class="g-sheet-title">Créneaux disponibles ajoutés</span></div><div class="g-sheet-body">' +
+      '<button type="button" class="g-save g-add-opening" data-new-opening>' + icon('plus') + ' Ouvrir un créneau</button>' +
+      '<p class="g-muted g-op-help">Ces créneaux s\'ajoutent à vos horaires habituels (Paramètres) et sont proposés aux clients sur le site.</p>' +
+      '<div class="g-op-list"><p class="g-muted">Chargement…</p></div></div>', 'g-sheet-edit');
+    var list = bg.querySelector('.g-op-list');
+    api('admin/openings').then(function (data) {
+      state.openingsList = data.openings;
+      list.innerHTML = data.openings.length ? data.openings.map(function (o, i) {
+        var l = openingLabel(o);
+        return '<button type="button" class="g-op-item" data-op="' + i + '">' + icon(o.weekdays ? 'repeat' : 'open') +
+          '<span><b>' + esc(l.title) + '</b><small>' + esc(l.when) + (o.note ? ' · ' + esc(o.note) : '') + '</small></span></button>';
+      }).join('') : '<p class="g-muted">Aucun créneau ajouté pour le moment.</p>';
+    }).catch(function (err) { list.innerHTML = '<p class="g-error">' + esc(err.message) + '</p>'; });
+    bg.addEventListener('click', function (e) {
+      if (e.target.closest('[data-new-opening]')) { closeSheet(true); return editOpening({ time: '17:00', from: state.anchor >= C.today ? state.anchor : C.today, capacity: 0 }); }
+      var it = e.target.closest('[data-op]');
+      if (it) { closeSheet(true); editOpening(Object.assign({}, state.openingsList[+it.getAttribute('data-op')])); }
+    });
+  }
+
+  function editOpening(o) {
+    var isNew = !o.id;
+    var recurring = !!o.weekdays;
+    var days = o.weekdays ? o.weekdays.split(',') : [String(toDate(o.from).getDay() || 7)];
+    var cap = o.capacity || (activeSlots()[0] ? activeSlots()[0].capacity : 4);
+    var bg = openSheet(
+      '<form class="g-form" novalidate>' +
+      '<div class="g-sheet-bar"><button type="button" class="g-icon-btn" data-close aria-label="Fermer">' + icon('close') + '</button>' +
+      '<span class="g-sheet-title">' + (isNew ? 'Ouvrir un créneau' : 'Créneau disponible') + '</span>' +
+      '<button type="submit" class="g-save">Enregistrer</button></div><div class="g-sheet-body">' +
+      '<div class="g-blockmode g-op-mode"><label><input type="radio" name="mode" value="once"' + (recurring ? '' : ' checked') + '><span>' + icon('open') + ' Ponctuel</span></label>' +
+      '<label><input type="radio" name="mode" value="weekly"' + (recurring ? ' checked' : '') + '><span>' + icon('repeat') + ' Récurrent (chaque semaine)</span></label></div>' +
+      '<div class="g-frow">' + icon('clock') + '<div class="g-fcol g-inline"><label class="g-lbl">Heure<select name="time" class="g-timesel">' + timeOptionsRange(6, 21, o.time) + '</select></label>' +
+      '<label class="g-lbl">Places<div class="g-stepper"><button type="button" data-cstep="-1" aria-label="Moins">−</button>' +
+      '<input type="number" name="capacity" min="1" max="50" value="' + cap + '" inputmode="numeric"><button type="button" data-cstep="1" aria-label="Plus">+</button></div></label></div></div>' +
+      '<div class="g-frow g-op-once">' + icon('cal') + '<div class="g-fcol"><label class="g-lbl">Date<input type="date" name="date" value="' + esc(o.from) + '"></label></div></div>' +
+      '<div class="g-op-weekly">' +
+      '<div class="g-frow">' + icon('repeat') + '<div class="g-fcol"><div class="g-days">' + [1, 2, 3, 4, 5, 6, 7].map(function (d) {
+        return '<label><input type="checkbox" name="wd" value="' + d + '"' + (days.indexOf(String(d)) !== -1 ? ' checked' : '') + '><span>' + WD[d] + '</span></label>';
+      }).join('') + '</div></div></div>' +
+      '<div class="g-frow">' + icon('cal') + '<div class="g-fcol g-inline"><label class="g-lbl">À partir du<input type="date" name="from" value="' + esc(o.from) + '"></label>' +
+      '<label class="g-lbl">Jusqu\'au (facultatif)<input type="date" name="to" value="' + esc(o.to || '') + '"></label></div></div></div>' +
+      '<div class="g-frow">' + icon('note') + '<div class="g-fcol"><input type="text" name="note" placeholder="Note (facultatif, ex. renfort Julie)" value="' + esc(o.note || '') + '"></div></div>' +
+      '<p class="g-op-info">' + icon('open') + '<span>Ces places sont proposées aux clients sur le site, sauf jours fermés, événements, et après la fermeture des réservations en ligne. À la même heure qu\'un créneau habituel, les places s\'additionnent.</span></p>' +
+      '<p class="g-error" hidden></p>' +
+      (isNew ? '' : '<button type="button" class="g-delete" data-delete>' + icon('trash') + 'Supprimer ce créneau</button>') +
+      '</div></form>', 'g-sheet-edit');
+    var form = bg.querySelector('form'), errEl = form.querySelector('.g-error');
+    function sync() {
+      var weekly = form.querySelector('input[name=mode]:checked').value === 'weekly';
+      form.querySelector('.g-op-once').hidden = weekly;
+      form.querySelector('.g-op-weekly').hidden = !weekly;
+    }
+    sync();
+    form.addEventListener('change', function (e) {
+      if (state.sheet) state.sheet.dirty = true;
+      if (e.target.name === 'mode') {
+        // Passage en récurrent : reprend la date choisie comme date de début
+        if (e.target.value === 'weekly' && form.date.value) form.from.value = form.date.value;
+        if (e.target.value === 'once' && form.from.value) form.date.value = form.from.value;
+      }
+      sync();
+    });
+    form.addEventListener('click', function (e) {
+      var st = e.target.closest('[data-cstep]');
+      if (st) form.capacity.value = Math.max(1, Math.min(50, (parseInt(form.capacity.value, 10) || 1) + (+st.getAttribute('data-cstep'))));
+    });
+    form.addEventListener('submit', function (e) {
+      e.preventDefault();
+      errEl.hidden = true;
+      var weekly = form.querySelector('input[name=mode]:checked').value === 'weekly';
+      var payload = {
+        id: o.id || 0, time: form.time.value, capacity: parseInt(form.capacity.value, 10) || 0, note: form.note.value,
+        recurring: weekly ? 1 : 0, from: weekly ? form.from.value : form.date.value, to: weekly ? form.to.value : '',
+        weekdays: [].slice.call(form.querySelectorAll('input[name=wd]:checked')).map(function (x) { return +x.value; })
+      };
+      if (!payload.from) { errEl.textContent = 'Choisissez une date.'; errEl.hidden = false; return; }
+      if (weekly && !payload.weekdays.length) { errEl.textContent = 'Choisissez au moins un jour.'; errEl.hidden = false; return; }
+      var btn = form.querySelector('.g-save');
+      btn.disabled = true; btn.textContent = 'Enregistrement…';
+      api('admin/opening', null, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }).then(function () {
+        closeSheet(true);
+        if (o.id) delete db.openings[o.id];
+        toast(isNew ? 'Créneau ouvert à la réservation' : 'Créneau enregistré');
+        var r = neededRange();
+        fetchRange(r[0], r[1], true).then(render);
+      }).catch(function (err) { errEl.textContent = err.message; errEl.hidden = false; btn.disabled = false; btn.textContent = 'Enregistrer'; });
+    });
+    var del = form.querySelector('[data-delete]');
+    if (del) del.addEventListener('click', function () {
+      if (!confirm('Supprimer ce créneau ? Les réservations déjà prises restent.')) return;
+      api('admin/opening/' + o.id, null, { method: 'DELETE' }).then(function () {
+        closeSheet(true); delete db.openings[o.id]; rebuild(); render(); toast('Créneau supprimé');
+      }).catch(function (err) { errEl.textContent = err.message; errEl.hidden = false; });
+    });
+  }
+
+  // ---------- Événements : détail, création, modification ----------
+  function openCreate(date, time, exactTime) {
+    var bg = openSheet('<div class="g-sheet-bar"><button type="button" class="g-icon-btn" data-close aria-label="Fermer">' + icon('close') + '</button>' +
+      '<span class="g-sheet-title">Créer' + (date ? ' · ' + esc(longDate(date)) + (exactTime ? ' ' + esc(exactTime) : '') : '') + '</span></div><div class="g-sheet-body g-choices">' +
       '<button type="button" data-choice="booking">' + icon('people') + '<span><b>Réservation</b><small>Un client, un ou plusieurs passagers</small></span></button>' +
+      '<button type="button" data-choice="opening">' + icon('open') + '<span><b>Créneau disponible</b><small>Ouvre des places à la réservation en ligne, ponctuellement ou chaque semaine</small></span></button>' +
       '<button type="button" data-choice="event">' + icon('block') + '<span><b>Événement / blocage</b><small>Météo, compétition, pilote absent, groupe privé… Bloque les places libres</small></span></button>' +
       '</div>', 'g-sheet-choice');
     bg.addEventListener('click', function (e) {
       var c = e.target.closest('[data-choice]');
       if (!c) return;
       closeSheet(true);
-      if (c.getAttribute('data-choice') === 'booking') newBooking(date, time); else newEvent(date, time);
+      var choice = c.getAttribute('data-choice');
+      if (choice === 'booking') newBooking(date, time);
+      else if (choice === 'opening') editOpening({ time: exactTime || time || '17:00', from: date || C.today, capacity: 0 });
+      else newEvent(date, exactTime || time);
     });
   }
 
@@ -1064,7 +1210,7 @@
       var others = Object.assign({}, dayData, { events: (dayData.events || []).filter(function (x) { return x.id !== ev.id; }) });
       var withThis = Object.assign({}, others, { events: others.events.concat([cur]) });
       var rows = [], kept = [];
-      dayData.slots.filter(function (s) { return s.active; }).forEach(function (s) {
+      slotsFor(dayData, cur.date).forEach(function (s) {
         var before = slotFree(others, cur.date, s.time, s.capacity), after = slotFree(withThis, cur.date, s.time, s.capacity);
         if (after.free !== before.free || after.blocked !== before.blocked) {
           rows.push('<li><b>' + s.time + '</b> ' + before.free + ' libre' + (before.free > 1 ? 's' : '') + ' → <b>' + after.free + '</b></li>');
@@ -1305,6 +1451,7 @@
     if (t.closest('[data-search]')) return openSearch();
     if (t.closest('[data-new]')) return newBooking();
     if (t.closest('[data-create]')) return openCreate();
+    if (t.closest('[data-openings]')) return openOpenings();
     if (t.closest('[data-push]')) return openPush();
     if (t.closest('[data-absence]')) return declareAbsence(state.view === 'day' || state.view === 'four' ? state.anchor : C.today);
     if ((el = t.closest('[data-free-time]'))) return newBooking(el.getAttribute('data-free-date'), el.getAttribute('data-free-time'));
@@ -1318,7 +1465,7 @@
     }
     if ((el = t.closest('[data-id]')) && !t.closest('a')) return openBooking(findBooking(+el.getAttribute('data-id')));
     // Clic dans une zone vide de la grille : nouvelle réservation à cette heure
-    if (C.canEdit && (el = t.closest('.g-col'))) return newBooking(el.getAttribute('data-date'), timeAt(el, e.clientY));
+    if (C.canEdit && (el = t.closest('.g-col'))) return openCreate(el.getAttribute('data-date'), timeAt(el, e.clientY), quarterAt(el, e.clientY));
     if ((el = t.closest('.g-mday'))) {
       if (C.canEdit) return newBooking(el.getAttribute('data-date'));
       state.anchor = el.getAttribute('data-date'); state.view = 'day'; store('view', 'day'); return load();
@@ -1376,12 +1523,19 @@
     });
   }
 
+  // Heure exacte (au quart d'heure) d'une position verticale
+  function quarterAt(col, clientY) {
+    var hr = hourRange(), y = clientY - col.getBoundingClientRect().top;
+    var m = Math.floor((hr[0] + y / hourHeight()) * 60 / 15) * 15;
+    return hhmm(Math.max(0, Math.min(23 * 60 + 45, m)));
+  }
+
   // Heure correspondant à une position verticale, arrondie au créneau le plus proche
   function timeAt(col, clientY, offset) {
     var hr = hourRange(), H = hourHeight();
     var y = clientY - col.getBoundingClientRect().top - (offset || 0);
     var m = Math.round((hr[0] + y / H) * 60);
-    var slots = activeSlots();
+    var slots = slotsFor(state.data, col.getAttribute('data-date'));
     if (slots.length) {
       var best = slots[0].time;
       slots.forEach(function (s) { if (Math.abs(mins(s.time) - m) < Math.abs(mins(best) - m)) best = s.time; });

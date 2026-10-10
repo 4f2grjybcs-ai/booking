@@ -136,9 +136,10 @@ function fvr_availability(string $date): array
     }
     $events = fvr_events_between($date, $date);
     $out = [];
-    foreach ($wpdb->get_results('SELECT time, capacity, valid_until FROM ' . fvr_table('slots') . ' WHERE active = 1 ORDER BY time', ARRAY_A) as $s) {
-        // Créneau passé, ou disponible seulement jusqu'à une certaine date
-        if ($date . ' ' . $s['time'] <= $cutoff || (!empty($s['valid_until']) && $date > $s['valid_until'])) {
+    // Horaires habituels + créneaux ajoutés depuis l'agenda (ponctuels ou récurrents)
+    foreach (fvr_slots_for_date($date) as $time => $capacity) {
+        $s = ['time' => $time, 'capacity' => $capacity];
+        if ($date . ' ' . $time <= $cutoff) {
             continue;
         }
         // Les événements (météo, pilote absent…) retirent des places libres

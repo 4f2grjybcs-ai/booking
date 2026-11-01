@@ -10,6 +10,14 @@ Le dossier `wordpress/flyverbier-reservation/` est une extension WordPress.
 4. Créer une page « Réserver » contenant le shortcode `[reservation_parapente]`.
 5. Vérifier **Réglages → Général → Fuseau horaire** = Zurich.
 
+### Indicateur « À jour » dans l'agenda (v1.15)
+
+- Bouton en haut de l'agenda : **vert « À jour »**, **rouge « Pas à jour »** (une réservation ou un réglage a changé
+  ailleurs : site client, autre téléphone, administration) ou **rouge « Hors connexion »**.
+- Vérification toutes les 20 secondes et au retour sur la page ; mise à jour automatique dès qu'aucune fiche n'est
+  ouverte. **Toucher le bouton** recharge tout l'agenda immédiatement.
+- Technique : version des données (`fvr_rev`) changée à chaque écriture dans les tables `wp_fvr_*`, route `GET fvr/v1/rev`.
+
 ### Gérer chaque créneau depuis l'agenda (v1.14)
 
 - Toucher **n'importe quel créneau** (vert habituel, bleu ajouté, « Complet » ou « Fermé ») ouvre un menu :

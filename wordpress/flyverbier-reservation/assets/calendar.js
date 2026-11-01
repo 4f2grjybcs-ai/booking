@@ -62,6 +62,7 @@
     mine: !!C.me && store('mine') !== '0',
     anchor: C.start || C.today,
     pushOn: false,
+    rev: null, sync: 'ok',
     showCancelled: store('cancelled') === '1',
     sidebar: !mq.matches && store('sidebar') !== '0',
     data: null,
@@ -140,6 +141,10 @@
     return fetch(url, options).then(function (res) {
       return res.json().catch(function () { return {}; }).then(function (data) {
         if (!res.ok) throw new Error(data.message || 'Erreur ' + res.status);
+        var rev = res.headers.get('X-FVR-Rev');
+        // Ma propre modification : la page reste à jour si elle l'était
+        if (rev && options.method && options.method !== 'GET' && state.sync === 'ok') state.rev = rev;
+        if (data && typeof data === 'object') try { Object.defineProperty(data, '__rev', { value: rev }); } catch (e) {}
         return data;
       });
     });
@@ -215,6 +220,7 @@
     if (inflight[key]) return inflight[key];
     if (!silent) setLoading(1);
     inflight[key] = api('calendar', { from: from, to: to }).then(function (data) {
+      if (state.rev === null && data.__rev) state.rev = data.__rev;
       var before = state.data ? JSON.stringify(sliceOf(from, to)) : null;
       merge(data);
       // Ne redessine que si la période affichée a réellement changé
@@ -378,6 +384,51 @@
       '</div></div>';
   }
 
+  // ---------- Indicateur « à jour » : vert = à jour, rouge = modifié ailleurs ou hors connexion ; clic = actualiser ----------
+  var SYNC_TXT = { ok: 'À jour', stale: 'Pas à jour', off: 'Hors connexion', busy: 'Actualisation…' };
+  function syncBtn() {
+    return '<button type="button" class="g-sync ' + state.sync + '" data-sync title="' + SYNC_TXT[state.sync] + ' – toucher pour actualiser" aria-label="' + SYNC_TXT[state.sync] + ', actualiser">' +
+      '<span class="g-sync-dot"></span>' + icon('repeat') + '<span class="g-sync-txt">' + SYNC_TXT[state.sync] + '</span></button>';
+  }
+  function setSync(st) {
+    state.sync = st;
+    root.querySelectorAll('.g-sync').forEach(function (b) {
+      b.className = 'g-sync ' + st;
+      b.title = SYNC_TXT[st] + ' – toucher pour actualiser';
+      b.setAttribute('aria-label', SYNC_TXT[st] + ', actualiser');
+      b.querySelector('.g-sync-txt').textContent = SYNC_TXT[st];
+    });
+  }
+  // Recharge tout : oublie le cache des autres périodes et relit la période affichée
+  function refreshAll(manual) {
+    if (state.sync === 'busy') return;
+    setSync('busy');
+    var r = neededRange();
+    Object.keys(inflight).forEach(function (k) { delete inflight[k]; });
+    db.days = {};
+    return fetchRange(r[0], r[1], !manual).then(function (data) {
+      state.rev = data.__rev || state.rev;
+      setSync('ok');
+      render();
+      prefetch();
+      if (manual) toast('Agenda à jour');
+    }).catch(function () {
+      setSync('off');
+      if (manual) toast('Pas de connexion : agenda non actualisé');
+    });
+  }
+  // Vérifie (requête très légère) si quelque chose a changé ailleurs
+  function checkRev() {
+    if (document.hidden || state.sync === 'busy' || !state.data) return;
+    api('rev').then(function (d) {
+      if (state.rev === null) state.rev = d.rev;
+      if (d.rev === state.rev) { if (state.sync !== 'ok') setSync('ok'); return; }
+      setSync('stale');
+      // Mise à jour automatique si rien n'est en cours de saisie
+      if (!state.sheet && !state.dragging) refreshAll(false);
+    }).catch(function () { setSync('off'); });
+  }
+
   function topbar() {
     if (compactDay()) {
       return '<header class="g-top g-top-day"><div class="g-progress"></div>' +
@@ -387,6 +438,7 @@
         '<button type="button" class="g-icon-btn" data-nav="1" aria-label="Jour suivant">' + icon('next') + '</button>' +
         '<span class="g-spacer"></span>' +
         (state.anchor !== C.today ? '<button type="button" class="g-today" data-nav="0" aria-label="Aujourd\'hui"><span class="g-today-short">' + toDate(C.today).getDate() + '</span></button>' : '') +
+        syncBtn() +
         (C.canEdit ? '<button type="button" class="g-icon-btn" data-search aria-label="Rechercher">' + icon('search') + '</button>' : '') +
         (C.push ? '<button type="button" class="g-icon-btn g-bell' + (state.pushOn ? ' on' : '') + '" data-push aria-label="Notifications">' + icon(state.pushOn ? 'bell' : 'belloff') + '</button>' : '') +
         viewMenu(true) + '</header>';
@@ -400,6 +452,7 @@
       '<h1 class="g-title">' + esc(title()) + '</h1>' +
       '<span class="g-spacer"></span>' +
       (C.canEdit ? '' : '<span class="g-ro">Lecture seule</span>') +
+      syncBtn() +
       (C.canEdit || !mq.matches ? '<button type="button" class="g-icon-btn" data-search aria-label="Rechercher">' + icon('search') + '</button>' : '') +
       (C.push ? '<button type="button" class="g-icon-btn g-bell' + (state.pushOn ? ' on' : '') + '" data-push aria-label="Notifications">' + icon(state.pushOn ? 'bell' : 'belloff') + '</button>' : '') +
       viewMenu(false) + '</header>';
@@ -700,6 +753,8 @@
     el.parentNode.removeChild(el);
     state.sheet = null;
     document.documentElement.classList.remove('g-noscroll');
+    // Des changements faits ailleurs attendaient la fermeture de la fiche
+    if (state.sync === 'stale') setTimeout(function () { if (!state.sheet) refreshAll(false); }, 300);
   }
 
   function row(ic, html) { return html ? '<div class="g-row">' + icon(ic) + '<div>' + html + '</div></div>' : ''; }
@@ -1587,6 +1642,7 @@
       if (!mq.matches) store('sidebar', state.sidebar ? '1' : '0');
       return state.sidebar ? load() : render();
     }
+    if (t.closest('[data-sync]')) return refreshAll(true);
     if (t.closest('[data-search]')) return openSearch();
     if (t.closest('[data-new]')) return newBooking();
     if (t.closest('[data-create]')) return openCreate();
@@ -1742,14 +1798,11 @@
   }, { passive: true });
 
   // Ligne « maintenant » et nouvelles réservations : actualisation régulière
-  setInterval(function () {
-    if (state.sheet || state.dragging || document.hidden || !state.data) return;
-    var r = neededRange();
-    fetchRange(r[0], r[1], true).catch(function () {});
-  }, 45000);
-  document.addEventListener('visibilitychange', function () {
-    if (!document.hidden && state.data && !state.sheet) { var r = neededRange(); fetchRange(r[0], r[1], true).catch(function () {}); }
-  });
+  setInterval(checkRev, 20000);
+  document.addEventListener('visibilitychange', function () { if (!document.hidden) checkRev(); });
+  window.addEventListener('focus', checkRev);
+  window.addEventListener('offline', function () { setSync('off'); });
+  window.addEventListener('online', checkRev);
   mq.addEventListener && mq.addEventListener('change', function () { state.sidebar = !mq.matches && store('sidebar') !== '0'; render(); });
 
   load();

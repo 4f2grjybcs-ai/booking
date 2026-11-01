@@ -538,3 +538,20 @@ body.fvr-cal-page .g-app { height: 100vh; height: 100dvh; }
   .g-choices .g-sm-stepper { margin-left: 40px; }
 }
 .g-op-warn { margin: 12px 0 0; padding: 12px 14px; border-radius: 12px; background: #fef7e0; color: #7a4f01; font-size: 14px; line-height: 1.4; }
+
+/* ---------- Indicateur « à jour » ---------- */
+.g-sync { display: inline-flex; align-items: center; gap: 6px; height: 36px; padding: 0 12px 0 10px; margin: 0 4px; border-radius: 18px; border: 1px solid; font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; white-space: nowrap; flex: none; }
+.g-sync .g-ic { width: 18px; height: 18px; }
+.g-sync-dot { width: 9px; height: 9px; border-radius: 50%; background: currentColor; flex: none; }
+.g-sync.ok { color: #137333; background: #e6f4ea; border-color: #a8dab5; }
+.g-sync.stale, .g-sync.off { color: #c5221f; background: #fce8e6; border-color: #f4b4ae; }
+.g-sync.stale .g-sync-dot, .g-sync.off .g-sync-dot { animation: g-sync-pulse 1.2s ease-in-out infinite; }
+.g-sync.busy { color: #1a73e8; background: #e8f0fe; border-color: #aecbfa; }
+.g-sync.busy .g-ic { animation: g-sync-spin .8s linear infinite; }
+@keyframes g-sync-spin { to { transform: rotate(360deg); } }
+@keyframes g-sync-pulse { 50% { opacity: .25; } }
+@media (max-width: 700px) {
+  .g-sync { padding: 0; width: 36px; justify-content: center; position: relative; margin: 0 2px; }
+  .g-sync-txt { display: none; }
+  .g-sync .g-sync-dot { position: absolute; top: 4px; right: 4px; width: 10px; height: 10px; border: 2px solid #fff; }
+}

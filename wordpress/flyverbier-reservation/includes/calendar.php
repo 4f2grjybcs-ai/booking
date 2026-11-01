@@ -182,6 +182,36 @@ function fvr_calendar_data(string $from, string $to, bool $canEdit): array
     return $data;
 }
 
+// ---------- Version des données (« à jour » / « pas à jour » dans l'agenda) ----------
+// Toute écriture dans les tables de l'extension (réservations, créneaux, événements…) change la version.
+
+function fvr_rev(): string
+{
+    return (string) get_option('fvr_rev', '0');
+}
+
+function fvr_touch_rev(): void
+{
+    update_option('fvr_rev', str_replace('.', '', sprintf('%.4f', microtime(true))) . wp_rand(10, 99), false);
+}
+
+add_filter('query', function ($query) {
+    global $wpdb;
+    if (preg_match('/^\s*(INSERT|UPDATE|DELETE|REPLACE)\b/i', $query)
+        && strpos($query, $wpdb->prefix . 'fvr_') !== false && strpos($query, $wpdb->prefix . 'fvr_push') === false) {
+        fvr_touch_rev();
+    }
+    return $query;
+});
+add_action('update_option_fvr_settings', 'fvr_touch_rev');
+
+add_filter('rest_post_dispatch', function ($res, $server, $req) {
+    if ($res instanceof WP_HTTP_Response && strpos($req->get_route(), '/fvr/v1/') === 0 && !isset($res->get_headers()['X-FVR-Rev'])) {
+        $res->header('X-FVR-Rev', fvr_rev());
+    }
+    return $res;
+}, 10, 3);
+
 // ---------- API ----------
 
 add_action('rest_api_init', function () {
@@ -195,9 +225,21 @@ add_action('rest_api_init', function () {
                 || strtotime($to) - strtotime($from) > 100 * DAY_IN_SECONDS) {
                 return new WP_Error('invalid', 'Période invalide.', ['status' => 400]);
             }
+            $rev = fvr_rev(); // lue avant les données : une modification pendant la lecture rendra la page « pas à jour »
             $res = rest_ensure_response(fvr_calendar_data($from, $to, fvr_can_edit_calendar($req)));
+            $res->header('X-FVR-Rev', $rev);
             $res->header('Cache-Control', 'no-store');
             $res->header('X-Robots-Tag', 'noindex');
+            return $res;
+        },
+    ]);
+
+    register_rest_route('fvr/v1', '/rev', [
+        'methods'             => 'GET',
+        'permission_callback' => 'fvr_can_view_calendar',
+        'callback'            => function () {
+            $res = rest_ensure_response(['rev' => fvr_rev()]);
+            $res->header('Cache-Control', 'no-store');
             return $res;
         },
     ]);

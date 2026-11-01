@@ -537,3 +537,4 @@ body.fvr-cal-page .g-app { height: 100vh; height: 100dvh; }
   .g-choices .g-sm-box > span { flex-basis: calc(100% - 40px); }
   .g-choices .g-sm-stepper { margin-left: 40px; }
 }
+.g-op-warn { margin: 12px 0 0; padding: 12px 14px; border-radius: 12px; background: #fef7e0; color: #7a4f01; font-size: 14px; line-height: 1.4; }

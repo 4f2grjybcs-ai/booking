@@ -10,6 +10,7 @@
   var DAYS_LONG = ['dimanche', 'lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi'];
   var MONTHS = ['janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juillet', 'août',
     'septembre', 'octobre', 'novembre', 'décembre'];
+  var MONTHS_SHORT = ['janv.', 'févr.', 'mars', 'avr.', 'mai', 'juin', 'juil.', 'août', 'sept.', 'oct.', 'nov.', 'déc.'];
   var VIEWS = { day: 'Jour', four: '4 jours', week: 'Semaine', month: 'Mois', list: 'Planning' };
   var VIEW_KEYS = { day: 'J', four: '4', week: 'S', month: 'M', list: 'P' };
   var ICON = {
@@ -100,11 +101,11 @@
     var r = range(), a = toDate(r[0]), b = toDate(r[1]), m = toDate(state.anchor);
     if (state.view === 'month' || state.view === 'list') return MONTHS[m.getMonth()] + ' ' + m.getFullYear();
     if (state.view === 'day') {
-      if (mq.matches) return DAYS[m.getDay()] + ' ' + m.getDate() + ' ' + (MONTHS[m.getMonth()].length > 5 ? MONTHS[m.getMonth()].slice(0, 4) + '.' : MONTHS[m.getMonth()]);
+      if (mq.matches) return DAYS[m.getDay()] + ' ' + m.getDate() + ' ' + MONTHS_SHORT[m.getMonth()];
       return DAYS_LONG[m.getDay()] + ' ' + m.getDate() + ' ' + MONTHS[m.getMonth()] + ' ' + m.getFullYear();
     }
     if (a.getMonth() === b.getMonth()) return MONTHS[a.getMonth()] + ' ' + a.getFullYear();
-    return MONTHS[a.getMonth()].slice(0, 4) + '. – ' + MONTHS[b.getMonth()].slice(0, 4) + '. ' + b.getFullYear();
+    return MONTHS_SHORT[a.getMonth()] + ' – ' + MONTHS_SHORT[b.getMonth()] + ' ' + b.getFullYear();
   }
 
   // ---------- Utilitaires ----------
@@ -648,7 +649,7 @@
       any = true;
       var dt = toDate(d);
       h += '<section class="g-lday' + (d === C.today ? ' today' : '') + '"><button type="button" class="g-ldate" data-goto="' + d + '" data-to-day>' +
-        '<b>' + dt.getDate() + '</b><span>' + MONTHS[dt.getMonth()].slice(0, 4) + '., ' + DAYS[dt.getDay()] + '</span></button><div class="g-litems">';
+        '<b>' + dt.getDate() + '</b><span>' + MONTHS_SHORT[dt.getMonth()] + ', ' + DAYS[dt.getDay()] + '</span></button><div class="g-litems">';
       if (blocked[d]) h += '<div class="g-litem closed">' + (blocked[d] === 'Fermé' ? 'Fermé' : 'Fermé · ' + esc(blocked[d])) + '</div>';
       evs.forEach(function (e) {
         h += '<div class="g-litem g-levt" data-event="' + e.id + '" tabindex="0" role="button"><span class="g-ltime">' + (e.all_day ? 'Jour' : esc(e.start)) + '</span>' +
@@ -962,7 +963,6 @@
       : longDate(o.from);
     return { title: o.time + ' · ' + o.capacity + ' place' + (o.capacity > 1 ? 's' : ''), when: when };
   }
-  var MONTHS_SHORT = ['janv.', 'févr.', 'mars', 'avr.', 'mai', 'juin', 'juil.', 'août', 'sept.', 'oct.', 'nov.', 'déc.'];
   function shortDate(s) { var d = toDate(s); return d.getDate() + ' ' + MONTHS_SHORT[d.getMonth()]; }
   function timeOptionsRange(fromH, toH, current) {
     var list = [];
@@ -1125,14 +1125,26 @@
       '<label class="g-lbl">Jusqu\'au (facultatif)<input type="date" name="to" value="' + esc(o.to || '') + '"></label></div></div></div>' +
       '<div class="g-frow">' + icon('note') + '<div class="g-fcol"><input type="text" name="note" placeholder="Note (facultatif, ex. renfort Julie)" value="' + esc(o.note || '') + '"></div></div>' +
       '<p class="g-op-info">' + icon('open') + '<span>Ces places sont proposées aux clients sur le site, sauf jours fermés, événements, et après la fermeture des réservations en ligne. À la même heure qu\'un créneau habituel, les places s\'additionnent.</span></p>' +
+      '<p class="g-op-warn" hidden></p>' +
       '<p class="g-error" hidden></p>' +
       (isNew ? '' : '<button type="button" class="g-delete" data-delete>' + icon('trash') + 'Supprimer ce créneau</button>') +
       '</div></form>', 'g-sheet-edit');
     var form = bg.querySelector('form'), errEl = form.querySelector('.g-error');
+    // Date de début après la fin de la réservation en ligne : le créneau ne serait proposé à personne
+    function lateStart() {
+      var weekly = form.querySelector('input[name=mode]:checked').value === 'weekly';
+      var start = weekly ? form.from.value : form.date.value;
+      return C.lastDay && start && start > C.lastDay;
+    }
     function sync() {
       var weekly = form.querySelector('input[name=mode]:checked').value === 'weekly';
       form.querySelector('.g-op-once').hidden = weekly;
       form.querySelector('.g-op-weekly').hidden = !weekly;
+      var warn = form.querySelector('.g-op-warn');
+      warn.hidden = !lateStart();
+      warn.textContent = 'Attention : la réservation en ligne est fermée après le ' + longDate(C.lastDay) +
+        '. Ce créneau sera enregistré mais pas proposé aux clients. Pour l\'ouvrir, prolongez la date dans ' +
+        'Réservations → Paramètres → Période de réservation en ligne.';
     }
     sync();
     form.addEventListener('change', function (e) {
@@ -1164,7 +1176,8 @@
       api('admin/opening', null, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }).then(function () {
         closeSheet(true);
         if (o.id) delete db.openings[o.id];
-        toast(isNew ? 'Créneau ouvert à la réservation' : 'Créneau enregistré');
+        toast(lateStart() ? 'Créneau enregistré — pas encore réservable (réservation en ligne fermée après le ' + longDate(C.lastDay) + ')'
+          : isNew ? 'Créneau ouvert à la réservation' : 'Créneau enregistré');
         var r = neededRange();
         fetchRange(r[0], r[1], true).then(render);
       }).catch(function (err) { errEl.textContent = err.message; errEl.hidden = false; btn.disabled = false; btn.textContent = 'Enregistrer'; });

@@ -19,6 +19,8 @@ Le dossier `wordpress/flyverbier-reservation/` est une extension WordPress.
   - **Places tous les jours** (− / +) et **Supprimer ce créneau habituel** (réactivable dans Paramètres) ;
   - pour un créneau ajouté : retirer ce jour-là, supprimer la série, modifier.
 - Les réservations déjà prises ne sont jamais supprimées ; la réservation en ligne suit immédiatement.
+- v1.14.1 : avertissement dans « Ouvrir un créneau » quand la date est après la fin de la réservation en ligne
+  (le créneau serait enregistré mais invisible pour les clients) ; mois abrégés corrigés (« nov. » au lieu de « nove. »).
 
 ### Créneaux disponibles ajoutés depuis l'agenda (v1.12)
 
